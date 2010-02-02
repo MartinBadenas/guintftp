@@ -5,12 +5,17 @@
 
 #define DEFAULT_PORT	69
 
-int main(int argc, char *argv[]){
-	int sd;
-	int port=DEFAULT_PORT;
-	struct sockaddr_in addr;
-	char buffer[516];
+void wait_th() {
+	wait(0);
+	signal(SIGCHLD, espera);
+}
 
+int main(int argc, char *argv[]) {
+	int sd;
+	int port = DEFAULT_PORT;
+	struct sockaddr_in addr;
+
+	signal(SIGCHLD, wait_th);
 	sd = socket(PF_INET, SOCK_DGRAM, 0);
 	bzero(&addr, sizeof(addr));
 	addr.sin_family = AF_INET;
@@ -22,9 +27,7 @@ int main(int argc, char *argv[]){
 		int bytes, addr_len=sizeof(addr);
 
 		bytes = recvfrom(sd, buffer, sizeof(buffer), 0, (struct sockaddr*)&addr, &addr_len);
-		printf("msg from %s:%d (%d bytes)\n", inet_ntoa(addr.sin_addr),
-						ntohs(addr.sin_port), bytes);
-		
+		//printf("msg from %s:%d (%d bytes)\n", inet_ntoa(addr.sin_addr), ntohs(addr.sin_port), bytes);
 	}
 	close(sd);
 }

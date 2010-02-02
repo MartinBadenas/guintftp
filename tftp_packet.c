@@ -1,6 +1,21 @@
 #include "tftp_packet.h"
+#include "tftp_auxi.h"
 
 void read_packet_read_write(char *buff, int bufflen, struct packet_read_write *paquet) {
+	int strLen, strModeLen;
+	
+	strLen = 2;
+	paquet->op = (short) buff[1];
+	while(buff[strLen] != '\0' && strLen < bufflen) {
+		strLen++;
+	}
+	substr(paquet->filename, buff, 2, strLen);
+	strModeLen = strLen + 2;
+	strLen = 0;
+	while((buff[strModeLen + strLen] != '\0') && (strModeLen + strLen < bufflen)) {
+		strLen++;
+	}
+	substr(paquet->mode, buff, strModeLen, strLen);
 }
 
 void read_packet_data(char *buff, int bufflen, struct packet_data *paquet) {
