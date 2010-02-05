@@ -2,17 +2,17 @@
 #include "tftp_auxi.h"
 #include "tftp_log.h"
 
-int guess_packet_type(char *buff, int bufflen, enum packet_type *type);
+int guess_packet_type(char *buff, int bufflen, packet_type *type) {
 	if(bufflen < 2) {
 		log_error("Invalid buffer!");
 		return -1;
 	}
-	type = buff[2];
+	*type = buff[2];
 	return 0;
 }
 
 // reads "buff" and inits "packet"
-int buff_to_packet_read_write(char *buff, int bufflen, struct packet_read_write *packet) {
+int buff_to_packet_read_write(char *buff, int bufflen, packet_read_write *packet) {
 	int strLen, strModeLen;
 	
 	strLen = 2;
@@ -43,7 +43,7 @@ int buff_to_packet_read_write(char *buff, int bufflen, struct packet_read_write 
 	return 0;
 }
 
-int buff_to_packet_data(char *buff, int bufflen, struct packet_data *packet) {
+int buff_to_packet_data(char *buff, int bufflen, packet_data *packet) {
 	if(bufflen < 4) {
 		log_error("Buffer too short!");
 		return -1;
@@ -60,31 +60,31 @@ int buff_to_packet_data(char *buff, int bufflen, struct packet_data *packet) {
 	}
 	packet->block = 0;
 	if(packet->datalen > 0) {
-		memcpy(
+		//memcpy(
 	}
 	return 0;
 }
 
-int buff_to_packet_ack(char *buff, int bufflen, struct packet_ack *packet) {
+int buff_to_packet_ack(char *buff, int bufflen, packet_ack *packet) {
 	return 0;
 }
 
-int buff_to_packet_error(char *buff, int bufflen, struct packet_error *packet) {
+int buff_to_packet_error(char *buff, int bufflen, packet_error *packet) {
 	return 0;
 }
 
-int packet_read_write_to_bytes(char *buffer, struct packet_read_write *packet) {
+int packet_read_write_to_bytes(char *buffer, packet_read_write *packet) {
 	return 0;
 }
 
-int packet_data_to_bytes(char *buffer, struct packet_data *packet) {
+int packet_data_to_bytes(char *buffer, packet_data *packet) {
 	return 0;
 }
 
-int packet_ack_to_bytes(char *buffer, struct packet_ack *packet) {
+int packet_ack_to_bytes(char *buffer, packet_ack *packet) {
 	return 0;	
 }
 
-int packet_error_to_bytes(char *buffer, struct packet_error *packet) {
+int packet_error_to_bytes(char *buffer, packet_error *packet) {
 	return 0;
 }

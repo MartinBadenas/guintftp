@@ -4,7 +4,7 @@
 #include <resolv.h>
 
 #define DEFAULT_PORT	69
-
+/*
 void wait_th() {
 	wait(0);
 	signal(SIGCHLD, espera);
@@ -31,4 +31,4 @@ int main(int argc, char *argv[]) {
 	}
 	close(sd);
 }
-
+*/

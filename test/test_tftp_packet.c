@@ -1,4 +1,5 @@
-#include "../tftp_packet.c"
+#include <assert.h>
+#include "../tftp_packet.h"
 
 void test_buff_to_packet_read_write() {
 	assert(1 == 2);
