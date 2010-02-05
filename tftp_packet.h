@@ -25,6 +25,7 @@ struct packet_data {
 	short block;
 	// max 512 bytes
 	char *data;
+	short datalen;
 }
 
 struct packet_ack {
@@ -38,7 +39,7 @@ struct packet_error {
 	char *errMsg;
 }
 
-enum packet_type guess_packet_type(char *buff, int bufflen);
+int guess_packet_type(char *buff, int bufflen, enum packet_type *type);
 
 int buff_to_packet_read_write(char *buff, int bufflen, struct packet_read_write *packet);
 
