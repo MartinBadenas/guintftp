@@ -40,20 +40,20 @@ struct packet_error {
 
 enum packet_type guess_packet_type(char *buff, int bufflen);
 
-int read_packet_read_write(char *buff, int bufflen, struct packet_read_write *packet);
+int buff_to_packet_read_write(char *buff, int bufflen, struct packet_read_write *packet);
 
-int read_packet_data(char *buff, int bufflen, struct packet_data *packet);
+int buff_to_packet_data(char *buff, int bufflen, struct packet_data *packet);
 
-int read_packet_ack(char *buff, int bufflen, struct packet_ack *packet);
+int buff_to_packet_ack(char *buff, int bufflen, struct packet_ack *packet);
 
-int read_packet_error(char *buff, int bufflen, struct packet_error *packet);
+int buff_to_packet_error(char *buff, int bufflen, struct packet_error *packet);
 
-int write_packet_read_write(char *buffer, struct packet_read_write *packet);
+int packet_read_write_to_bytes(char *buffer, struct packet_read_write *packet);
 
-int write_packet_data(char *buffer, struct packet_data *packet);
+int packet_data_to_bytes(char *buffer, struct packet_data *packet);
 
-int write_packet_ack(char *buffer, struct packet_ack *packet);
+int packet_ack_to_bytes(char *buffer, struct packet_ack *packet);
 
-int write_packet_error(char *buffer, struct packet_error *packet);
+int packet_error_to_bytes(char *buffer, struct packet_error *packet);
 
 #endif /*TFTP_PACKET_H_*/
