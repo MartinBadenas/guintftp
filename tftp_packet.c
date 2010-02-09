@@ -60,7 +60,7 @@ int buff_to_packet_data(char *buff, int bufflen, packet_data *packet) {
 	}
 	packet->block = 0;
 	if(packet->datalen > 0) {
-		//memcpy(
+		memcopy(packet->data, buff, 4, packet->datalen);
 	}
 	return 0;
 }
