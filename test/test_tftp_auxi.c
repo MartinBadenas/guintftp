@@ -12,9 +12,9 @@ void test_memcopy() {
 	
 	memset(dest, 0, 110*sizeof(int));
 	memset(src, 1, 100*sizeof(int));
-	memcopy(dest, src, 9, 100*sizeof(int));
 	int i;
-	for(i = 0; i < 110; i++) {
-		printf("dest[%d] = '%d'\n", i, dest[i]);
+	for(i = 0; i < 100; i++) {
+		printf("src[%d] = '%d'\n", i, src[i]);
 	}
+	memcopy(dest, src, 9*sizeof(int), 100*sizeof(int));
 }
