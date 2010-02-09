@@ -85,6 +85,7 @@ int buff_to_packet_error(char *buff, int bufflen, packet_error *packet) {
 }
 
 int packet_read_write_to_bytes(char *buffer, packet_read_write *packet) {
+	
 	return 0;
 }
 
