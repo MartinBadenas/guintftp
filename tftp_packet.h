@@ -9,11 +9,6 @@ typedef enum {
 	ERROR=5
 } packet_type;
 
-typedef enum {
-	NETASCII=1,
-	OCTET=2
-} packet_mode;
-
 typedef struct {
 	short op;
 	char *filename;

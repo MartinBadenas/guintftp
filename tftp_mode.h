@@ -1,6 +1,13 @@
 #ifndef TFTP_MODE_H_
 #define TFTP_MODE_H_
 
-void encode_mode(enum paquet_mode *mode, char *buff);
+typedef enum {
+	NETASCII=1,
+	OCTET=2
+} packet_mode;
+
+int mode_to_chars(paquet_mode *mode, char *buff);
+int chars_to_mode(paquet_mode *mode, char *buff);
+int encode_mode(paquet_mode *mode, char *buff);
 
 #endif /*TFTP_MODE_H_*/

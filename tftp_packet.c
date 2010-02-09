@@ -7,7 +7,7 @@ int guess_packet_type(char *buff, int bufflen, packet_type *type) {
 		log_error("Invalid buffer!");
 		return -1;
 	}
-	*type = buff[2];
+	*type = buff[1];
 	return 0;
 }
 
