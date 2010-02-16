@@ -1,6 +1,11 @@
 #ifndef TFTP_PACKET_H_
 #define TFTP_PACKET_H_
 
+#define MAX_PACKET_SIZE 512
+#define MIN_READ_WRITE_SIZE 6
+#define MIN_DATA_SIZE 4
+#define ACK_SIZE 4
+
 typedef enum {
 	RRQ=1,
 	WRQ=2,
