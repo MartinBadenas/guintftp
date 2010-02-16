@@ -60,6 +60,21 @@ void test_buff_to_packet_read_write() {
 	assert(packet.op == 2);
 	assert(strcmp(packet.filename, filename) == 0);
 	assert(strcmp(packet.mode, mode) == 0);
+	
+	//wrong packet type
+	buff[1] = 3;
+	res = buff_to_packet_read_write(buff, len, &packet);
+	assert(res == -1);
+	
+	//wrong packet size, too short
+	buff[1] = 2;
+	res = buff_to_packet_read_write(buff, 5, &packet);
+	assert(res == -1);
+	
+	//wrong packet size, too long
+	buff[1] = 2;
+	res = buff_to_packet_read_write(buff, 517, &packet);
+	assert(res == -1);
 }
 
 void test_buff_to_packet_data() {

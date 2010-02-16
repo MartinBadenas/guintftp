@@ -63,7 +63,7 @@ int buff_to_packet_data(char *buff, int bufflen, packet_data *packet) {
 		return -1;
 	}
 	packet->datalen = bufflen - 4;
-	if(packet->datalen > MAX_PACKET_SIZE) {
+	if(bufflen > MAX_PACKET_SIZE) {
 		log_error("Buffer too long");
 		return -1;
 	}
@@ -89,6 +89,21 @@ int buff_to_packet_ack(char *buff, int bufflen, packet_ack *packet) {
 }
 
 int buff_to_packet_error(char *buff, int bufflen, packet_error *packet) {
+	if(bufflen < MIN_ERROR_SIZE) {
+		log_error("Buffer too short!");
+		return -1;
+	}
+	if(bufflen > MAX_PACKET_SIZE) {
+		log_error("Buffer too long");
+		return -1;
+	}
+	packet->op = (short) buff[1];
+	if(packet->op != ERROR) {
+		log_error("Invalid packet type!");
+		return -1;
+	}
+	packet->error_code = (short) buff[3];
+	substr(packet->err_msg, buff, 4, strLen);
 	return 0;
 }
 

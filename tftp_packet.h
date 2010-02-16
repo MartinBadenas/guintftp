@@ -1,10 +1,22 @@
 #ifndef TFTP_PACKET_H_
 #define TFTP_PACKET_H_
 
-#define MAX_PACKET_SIZE 512
+#define MAX_PACKET_SIZE 516
 #define MIN_READ_WRITE_SIZE 6
 #define MIN_DATA_SIZE 4
+#define MIN_ERROR_SIZE 6
 #define ACK_SIZE 4
+
+char *error_codes[8] = {
+"(custom)",
+"File not found.",
+"Access violation.",
+"Disk full or allocation exceeded.",
+"Illegal TFTP operation.",
+"Unknown transfer ID.",
+"File already exists.",
+"No such user."
+};
 
 typedef enum {
 	RRQ=1,
@@ -36,7 +48,7 @@ typedef struct {
 typedef struct {
 	short op;
 	short error_code;
-	char *errMsg;
+	char *err_msg;
 } packet_error;
 
 int guess_packet_type(char *buff, int bufflen, packet_type *type);
