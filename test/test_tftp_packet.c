@@ -1,7 +1,6 @@
 #include <assert.h>
 #include <string.h>
 #include "../tftp_packet.h"
-#include "../tftp_auxi.h"
 
 void test_guess_packet_type() {
 	packet_type type;
@@ -37,13 +36,16 @@ void test_buff_to_packet_read_write() {
 	packet_read_write packet;
 	char *filename = "/home/dani/file";
 	char *mode = "OCTET";
+	char *pnt;
 	int res;
 	
 	// read packet
 	memset(buff, 0, len*sizeof(char));
 	buff[1] = 1;
-	memcopy(buff, filename, 2, strlen(filename) + 1);
-	memcopy(buff, mode, strlen(filename) + 1, strlen(mode) + 1);
+	pnt = &buff[2];
+	memcpy(pnt, filename, (strlen(filename) + 1)*sizeof(char));
+	pnt = &buff[strlen(filename) + 1];
+	memcpy(pnt, mode, (strlen(mode) + 1)*sizeof(char));
 	res = buff_to_packet_read_write(buff, len, &packet);
 	assert(res == 0);
 	assert(packet.op == 1);
@@ -53,8 +55,10 @@ void test_buff_to_packet_read_write() {
 	// write packet
 	memset(buff, 0, len);
 	buff[1] = 2;
-	memcopy(buff, filename, 2, strlen(filename) + 1);
-	memcopy(buff, mode, strlen(filename) + 1, strlen(mode) + 1);
+	pnt = &buff[2];
+	memcpy(pnt, filename, (strlen(filename) + 1)*sizeof(char));
+	pnt = &buff[strlen(filename) + 1];
+	memcpy(pnt, mode, (strlen(mode) + 1)*sizeof(char));
 	res = buff_to_packet_read_write(buff, len, &packet);
 	assert(res == 0);
 	assert(packet.op == 2);
@@ -78,7 +82,6 @@ void test_buff_to_packet_read_write() {
 }
 
 void test_buff_to_packet_data() {
-	// voy a probar de hacer este test (martin)
 	int len = 4 + 512;
 	char buff[len];
 	packet_data packet;
@@ -109,4 +112,25 @@ void test_packet_ack_to_bytes() {
 }
 
 void test_packet_error_to_bytes() {
+}
+
+void test_error_code() {
+	char *error_codes[7] = {
+	"File not found.",
+	"Access violation.",
+	"Disk full or allocation exceeded.",
+	"Illegal TFTP operation.",
+	"Unknown transfer ID.",
+	"File already exists.",
+	"No such user."
+	};
+	int i, len;
+	char msg[255];
+	for(i = 1; i < 8; i++) {
+		 assert(error_code(i, msg, &len) == 0);
+		 assert(strcmp(msg, error_codes[i-1]) == 0);
+	}
+	assert(error_code(0, msg, &len) == -1);
+	assert(error_code(-1, msg, &len) == -1);
+	assert(error_code(7, msg, &len) == -1);
 }

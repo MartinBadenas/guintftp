@@ -1,6 +1,6 @@
 #include "tftp_packet.h"
-#include "tftp_auxi.h"
 #include "tftp_log.h"
+#include <string.h>
 
 int guess_packet_type(char *buff, int bufflen, packet_type *type) {
 	if(bufflen < 2) {
@@ -14,6 +14,7 @@ int guess_packet_type(char *buff, int bufflen, packet_type *type) {
 // reads "buff" and inits "packet"
 int buff_to_packet_read_write(char *buff, int bufflen, packet_read_write *packet) {
 	int strLen, pos;
+	char *pnt;
 	
 	packet->op = (short) buff[1];
 	// el op de los paquetes write y read es 1 y 2
@@ -38,7 +39,8 @@ int buff_to_packet_read_write(char *buff, int bufflen, packet_read_write *packet
 		log_error("Invalid buffer!");
 		return -1;
 	}
-	substr(packet->filename, buff, pos, strLen);
+	pnt = &buff[pos];
+	strncpy(packet->filename, pnt, strLen);
 	pos += strLen + 1;//posicion en la que busca el modo
 	strLen = 0;
 	while((buff[pos + strLen] != '\0') && (pos + strLen < bufflen)) {
@@ -48,11 +50,14 @@ int buff_to_packet_read_write(char *buff, int bufflen, packet_read_write *packet
 		log_error("Invalid buffer!");
 		return -1;
 	}
-	substr(packet->mode, buff, pos, strLen);
+	pnt = &buff[pos];
+	strncpy(packet->mode, pnt, strLen);
 	return 0;
 }
 
 int buff_to_packet_data(char *buff, int bufflen, packet_data *packet) {
+	char *pnt;
+	
 	if(bufflen < MIN_DATA_SIZE) {
 		log_error("Buffer too short!");
 		return -1;
@@ -69,7 +74,8 @@ int buff_to_packet_data(char *buff, int bufflen, packet_data *packet) {
 	}
 	packet->block = 0;
 	if(packet->datalen > 0) {
-		memcopy(packet->data, buff, 4, packet->datalen);
+		pnt = &buff[4];
+		memcpy(packet->data, pnt, packet->datalen*sizeof(char));
 	}
 	return 0;
 }
@@ -89,6 +95,9 @@ int buff_to_packet_ack(char *buff, int bufflen, packet_ack *packet) {
 }
 
 int buff_to_packet_error(char *buff, int bufflen, packet_error *packet) {
+	int strLen;
+	char *pnt;
+	
 	if(bufflen < MIN_ERROR_SIZE) {
 		log_error("Buffer too short!");
 		return -1;
@@ -103,7 +112,12 @@ int buff_to_packet_error(char *buff, int bufflen, packet_error *packet) {
 		return -1;
 	}
 	packet->error_code = (short) buff[3];
-	substr(packet->err_msg, buff, 4, strLen);
+	strLen = 4;
+	while(buff[strLen] != '\0') {
+		strLen++;
+	}
+	pnt = &buff[4];
+	strncpy(packet->err_msg, pnt, strLen);
 	return 0;
 }
 
@@ -121,5 +135,25 @@ int packet_ack_to_bytes(char *buffer, packet_ack *packet) {
 }
 
 int packet_error_to_bytes(char *buffer, packet_error *packet) {
+	return 0;
+}
+
+int error_code(int error_code, char *string, int *len) {
+	static char *error_codes[7] = {
+	"File not found.",
+	"Access violation.",
+	"Disk full or allocation exceeded.",
+	"Illegal TFTP operation.",
+	"Unknown transfer ID.",
+	"File already exists.",
+	"No such user."
+	};
+	error_code--;
+	if(error_code > 6 || error_code < 0) {
+		log_error("invalid error_code");
+		return -1;
+	}
+	string = error_codes[error_code];
+	*len = strlen(string);
 	return 0;
 }

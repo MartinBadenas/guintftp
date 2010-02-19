@@ -7,17 +7,6 @@
 #define MIN_ERROR_SIZE 6
 #define ACK_SIZE 4
 
-char *error_codes[8] = {
-"(custom)",
-"File not found.",
-"Access violation.",
-"Disk full or allocation exceeded.",
-"Illegal TFTP operation.",
-"Unknown transfer ID.",
-"File already exists.",
-"No such user."
-};
-
 typedef enum {
 	RRQ=1,
 	WRQ=2,
@@ -68,5 +57,7 @@ int packet_data_to_bytes(char *buffer, packet_data *packet);
 int packet_ack_to_bytes(char *buffer, packet_ack *packet);
 
 int packet_error_to_bytes(char *buffer, packet_error *packet);
+
+int error_code(int error_code, char *string, int *len);
 
 #endif /*TFTP_PACKET_H_*/

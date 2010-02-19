@@ -19,4 +19,6 @@ void test_packet_ack_to_bytes();
 
 void test_packet_error_to_bytes();
 
+void test_error_code();
+
 #endif /*TEST_TFTP_PACKET_H_*/
