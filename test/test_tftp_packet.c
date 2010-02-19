@@ -79,6 +79,18 @@ void test_buff_to_packet_read_write() {
 
 void test_buff_to_packet_data() {
 	// voy a probar de hacer este test (martin)
+	int len = 4 + 512;
+	char buff[len];
+	packet_data packet;
+	int opcode = 3;
+	int block = 10; // el bloque siempre empieza por 1 no puede existir un bloque menor que 1
+	char *data = "Esto llega bien";
+	
+	memset(buff, 0, len*sizeof(char));
+	buff[1] = opcode;
+	sprintf(buff,"%s%d", buff, block)
+	memcpy(buff, data, strlen(data) + 1);
+	
 }
 
 void test_buff_to_packet_ack() {
