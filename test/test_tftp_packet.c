@@ -91,7 +91,6 @@ void test_buff_to_packet_data() {
 	
 	memset(buff, 0, len*sizeof(char));
 	buff[1] = opcode;
-	sprintf(buff,"%s%d", buff, block)
 	memcpy(buff, data, strlen(data) + 1);
 	
 }
