@@ -18,7 +18,9 @@ typedef enum {
 typedef struct {
 	short op;
 	char *filename;
+	short filenamelen;
 	char *mode;
+	short modelen;
 } packet_read_write;
 
 typedef struct {
@@ -37,7 +39,8 @@ typedef struct {
 typedef struct {
 	short op;
 	short error_code;
-	char *err_msg;
+	char *errmsg;
+	short errmsglen;
 } packet_error;
 
 int guess_packet_type(char *buff, int bufflen, packet_type *type);
@@ -49,8 +52,6 @@ int buff_to_packet_data(char *buff, int bufflen, packet_data *packet);
 int buff_to_packet_ack(char *buff, int bufflen, packet_ack *packet);
 
 int buff_to_packet_error(char *buff, int bufflen, packet_error *packet);
-
-int packet_read_write_to_bytes(char *buffer, packet_read_write *packet);
 
 int packet_data_to_bytes(char *buffer, packet_data *packet);
 

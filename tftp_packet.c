@@ -39,8 +39,9 @@ int buff_to_packet_read_write(char *buff, int bufflen, packet_read_write *packet
 		log_error("Invalid buffer!");
 		return -1;
 	}
+	packet->filenamelen = strLen;
 	pnt = &buff[pos];
-	strncpy(packet->filename, pnt, strLen);
+	strncpy(packet->filename, pnt, packet->filenamelen);
 	pos += strLen + 1;//posicion en la que busca el modo
 	strLen = 0;
 	while((buff[pos + strLen] != '\0') && (pos + strLen < bufflen)) {
@@ -50,8 +51,9 @@ int buff_to_packet_read_write(char *buff, int bufflen, packet_read_write *packet
 		log_error("Invalid buffer!");
 		return -1;
 	}
+	packet->modelen = strLen;
 	pnt = &buff[pos];
-	strncpy(packet->mode, pnt, strLen);
+	strncpy(packet->mode, pnt, packet->modelen);
 	return 0;
 }
 
@@ -90,7 +92,9 @@ int buff_to_packet_ack(char *buff, int bufflen, packet_ack *packet) {
 		log_error("Invalid packet type!");
 		return -1;
 	}
-	packet->block = ((((short) buff[2]) * 10) + ((short) buff[3]));
+	
+	packet->block = ((short) buff[2]) << 8;
+	packet->block = packet->block | buff[3];
 	return 0;
 }
 
@@ -116,13 +120,24 @@ int buff_to_packet_error(char *buff, int bufflen, packet_error *packet) {
 	while(buff[strLen] != '\0') {
 		strLen++;
 	}
+	packet->errmsglen = strLen;
 	pnt = &buff[4];
-	strncpy(packet->err_msg, pnt, strLen);
+	strncpy(packet->errmsg, pnt, packet->errmsglen);
 	return 0;
 }
 
 int packet_data_to_bytes(char *buffer, packet_data *packet) {
-	return 0;
+	int len;
+	char *pnt;
+	
+	len = MIN_DATA_SIZE + packet->datalen;
+	memset(buffer, 0, len);
+	buffer[1] = (char) packet->op;
+	buffer[2] = (char) packet->block >> 8;
+	buffer[3] = (char) packet->block & 0xff;
+	pnt = &buffer[4];
+	memcpy(pnt, packet->data, packet->datalen);
+	return len;
 }
 
 int packet_ack_to_bytes(char *buffer, packet_ack *packet) {
@@ -130,7 +145,20 @@ int packet_ack_to_bytes(char *buffer, packet_ack *packet) {
 }
 
 int packet_error_to_bytes(char *buffer, packet_error *packet) {
-	return 0;
+	int len;
+	char *pnt;
+	
+	len = 4 + packet->errmsglen + 1;
+	if(len < MIN_ERROR_SIZE) {
+		log_error("Bad error packet");
+		return -1;
+	}
+	memset(buffer, 0, len);
+	buffer[1] = (char) packet->op;
+	buffer[3] = (char) packet->error_code;
+	pnt = &buffer[4];
+	strncpy(pnt, packet->errmsg, packet->errmsglen);
+	return len;
 }
 
 int error_code(int error_code, char *string, int *len) {
