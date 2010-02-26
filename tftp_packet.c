@@ -121,11 +121,6 @@ int buff_to_packet_error(char *buff, int bufflen, packet_error *packet) {
 	return 0;
 }
 
-int packet_read_write_to_bytes(char *buffer, packet_read_write *packet) {
-	
-	return 0;
-}
-
 int packet_data_to_bytes(char *buffer, packet_data *packet) {
 	return 0;
 }
