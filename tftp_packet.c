@@ -141,7 +141,13 @@ int packet_data_to_bytes(char *buffer, packet_data *packet) {
 }
 
 int packet_ack_to_bytes(char *buffer, packet_ack *packet) {
-	return 0;	
+	int len = 4;
+	memset(buffer, 0, len);
+	buffer[1] = (char) packet->op;
+	buffer[2] = (char) packet->block >> 8;
+	buffer[3] = (char) packet->block
+	//packet->block = ((((short) buff[2]) * 10) + ((short) buff[3]));
+	return len;	
 }
 
 int packet_error_to_bytes(char *buffer, packet_error *packet) {
