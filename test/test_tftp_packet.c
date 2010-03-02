@@ -82,20 +82,49 @@ void test_buff_to_packet_read_write() {
 }
 
 void test_buff_to_packet_data() {
-	int len = 4 + 512;
-	char buff[len];
-	packet_data packet;
-	int opcode = 3;
-	int block = 10; // el bloque siempre empieza por 1 no puede existir un bloque menor que 1
-	char *data = "Esto llega bien";
+	//int len = 4 + 512;
+	//char buff[len];
+	//packet_data packet;
+	//int opcode = 3;
+	//int block = 10; // el bloque siempre empieza por 1 no puede existir un bloque menor que 1
+	//char *data = "Esto llega bien";
 	
-	memset(buff, 0, len*sizeof(char));
-	buff[1] = opcode;
-	memcpy(buff, data, strlen(data) + 1);
+	//memset(buff, 0, len*sizeof(char));
+	//buff[1] = opcode;
+	//memcpy(buff, data, strlen(data) + 1);
 	
 }
 
 void test_buff_to_packet_ack() {
+	int len = 4;
+	char buff[len];
+	packet_ack ack;
+	short i;
+	
+	// valid packet
+	buff[0] = 0;
+	buff[1] = ACK;
+	for(i = 0; i < 512; i++) {
+		buff[2] = (char) i >> 8;
+		buff[3] = (char) i & 0xff;
+		assert(buff_to_packet_ack(buff, len, &ack) == 0);
+		assert(ack.op == ACK);
+		assert(ack.block == i);
+	}
+	
+	// invalid packet op
+	buff[1] = ACK + 1;
+	assert(buff_to_packet_ack(buff, len, &ack) == -1);
+	
+	// invalid packet length, too long
+	buff[1] = ACK;
+	len = 5;
+	assert(buff_to_packet_ack(buff, len, &ack) == -1);
+	
+	// invalid packet length, too short
+	buff[1] = ACK;
+	len = 3;
+	assert(buff_to_packet_ack(buff, len, &ack) == -1);
 }
 
 void test_buff_to_packet_error() {
