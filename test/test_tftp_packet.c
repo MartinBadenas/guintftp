@@ -31,15 +31,15 @@ void test_guess_packet_type() {
 }
 
 void test_buff_to_packet_read_write() {
-	int len = 512+4;
-	char buff[len];
+	char buff[512+4];
+	int len = sizeof(buff);
 	packet_read_write packet;
 	char *filename = "/home/dani/file";
 	char *mode = "OCTET";
 	char *pnt;
 	int res;
 	
-	// read packet
+	/* read packet */
 	memset(buff, 0, len*sizeof(char));
 	buff[1] = 1;
 	pnt = &buff[2];
@@ -52,7 +52,7 @@ void test_buff_to_packet_read_write() {
 	assert(strcmp(packet.filename, filename) == 0);
 	assert(strcmp(packet.mode, mode) == 0);
 	
-	// write packet
+	/* write packet */
 	memset(buff, 0, len);
 	buff[1] = 2;
 	pnt = &buff[2];
@@ -65,28 +65,30 @@ void test_buff_to_packet_read_write() {
 	assert(strcmp(packet.filename, filename) == 0);
 	assert(strcmp(packet.mode, mode) == 0);
 	
-	//wrong packet type
+	/* wrong packet type */
 	buff[1] = 3;
 	res = buff_to_packet_read_write(buff, len, &packet);
 	assert(res == -1);
 	
-	//wrong packet size, too short
+	/* wrong packet size, too short */
 	buff[1] = 2;
 	res = buff_to_packet_read_write(buff, 5, &packet);
 	assert(res == -1);
 	
-	//wrong packet size, too long
+	/* wrong packet size, too long */
 	buff[1] = 2;
 	res = buff_to_packet_read_write(buff, 517, &packet);
 	assert(res == -1);
+	
+	/* TODO: filename not null terminated */
 }
 
 void test_buff_to_packet_data() {
-	int len = 4 + 512;
-	char buff[len];
+	char buff[4 + 512];
+	int len = sizeof(buff);
 	packet_data packet;
 	short opcode = 3;
-	short block = 10; // el bloque siempre empieza por 1 no puede existir un bloque menor que 1
+	short block = 10; /* el bloque siempre empieza por 1 no puede existir un bloque menor que 1 */
 	char *data = "Esto llega bien\0";
 	char *errordata = "Esto hace que pete";
 	char *pnt;
@@ -99,19 +101,19 @@ void test_buff_to_packet_data() {
 	pnt = &buff[4];
 	memcpy(pnt, data, sizeof(data));
 	
-	//buff to packet
+	/* buff to packet */
 	res = buff_to_packet_data(buff, len, &packet);
 	assert(res == 0);
 	assert(packet.op == 3);
 	assert(packet.block == block);
 	assert(strcmp(packet.data, data) == 0);
 	
-	//wrong packet type
+	/* wrong packet type */
 	buff[1] = 2;
 	res = buff_to_packet_data(buff, len, &packet);
 	assert(res == -1);
 	
-	//wrong block size, to short
+	/* wrong block size, to short */
 	buff[1] = 3;
 	block = 0;
 	buff[2] = (char) (block >> 8);
@@ -119,7 +121,7 @@ void test_buff_to_packet_data() {
 	res = buff_to_packet_data(buff, len, &packet);
 	assert(res == -1);
 	
-	//wrong data, string data doesn't have final
+	/* wrong data, string data doesn't have final */
 	block = 10;
 	buff[2] = (char) (block >> 8);
 	buff[3] = (char) (block & 0xff);
@@ -131,12 +133,12 @@ void test_buff_to_packet_data() {
 }
 
 void test_buff_to_packet_ack() {
-	int len = 4;
-	char buff[len];
+	char buff[4];
+	int len = sizeof(buff);
 	packet_ack ack;
 	short i;
 	
-	// valid packet
+	/* valid packet */
 	buff[0] = 0;
 	buff[1] = ACK;
 	for(i = 0; i < 512; i++) {
@@ -147,22 +149,86 @@ void test_buff_to_packet_ack() {
 		assert(ack.block == i);
 	}
 	
-	// invalid packet op
+	/* invalid packet op */
 	buff[1] = ACK + 1;
 	assert(buff_to_packet_ack(buff, len, &ack) == -1);
 	
-	// invalid packet length, too long
+	/* invalid packet length, too long */
 	buff[1] = ACK;
 	len = 5;
 	assert(buff_to_packet_ack(buff, len, &ack) == -1);
 	
-	// invalid packet length, too short
+	/* invalid packet length, too short */
 	buff[1] = ACK;
 	len = 3;
 	assert(buff_to_packet_ack(buff, len, &ack) == -1);
 }
 
 void test_buff_to_packet_error() {
+	 char buff[516];
+	 char *pnt;
+	 int len = 516;
+	 int i, error_code;
+	 packet_error error;
+	 char *custom_error = "Custom error!!";
+	 char *error_codes[7] = {
+	"File not found.",
+	"Access violation.",
+	"Disk full or allocation exceeded.",
+	"Illegal TFTP operation.",
+	"Unknown transfer ID.",
+	"File already exists.",
+	"No such user."
+	};
+	
+	/* custom error packet */
+	memset(buff, 0, len);
+	buff[1] = ERROR;
+	buff[2] = 0;
+	buff[3] = 0;
+	pnt = &buff[4];
+	len = strlen(custom_error);
+	strncpy(pnt, custom_error, len);
+	len += 4;
+	assert(buff_to_packet_error(buff, len, &error) == 0);
+	assert(error.op == ERROR);
+	assert(error.error_code == error_code);
+	assert(strcmp(custom_error, error.errmsg) == 0);
+	assert(strlen(custom_error) == error.errmsglen);
+	
+	/* valid packet */
+	for(i = 0; i < 7; i++) {
+		memset(buff, 0, len);
+		buff[1] = ERROR;
+		error_code = i + 1;
+		buff[2] = (char) error_code >> 8;
+		buff[3] = (char) error_code & 0xff;
+		pnt = &buff[4];
+		len = strlen(error_codes[i]);
+		strncpy(pnt, error_codes[i], len);
+		len += 4;
+		assert(buff_to_packet_error(buff, len, &error) == 0);
+		assert(error.op == ERROR);
+		assert(error.error_code == error_code);
+		assert(strcmp(error_codes[i], error.errmsg) == 0);
+		assert(strlen(error_codes[i]) == error.errmsglen);
+	}
+	
+	/* invalid opcode */
+	buff[1] = ERROR + 1;
+	assert(buff_to_packet_error(buff, len, &error) == -1);
+	
+	/* buffer too long */
+	buff[1] = ERROR;
+	len = 517;
+	assert(buff_to_packet_error(buff, len, &error) == -1);
+	
+	/* buffer too short */
+	buff[1] = ERROR;
+	len = 4;
+	assert(buff_to_packet_error(buff, len, &error) == -1);
+	
+	/* TODO: filename not null terminated */
 }
 
 void test_packet_read_write_to_bytes() {

@@ -2,7 +2,7 @@
 #include "tftp_log.h"
 #include <string.h>
 
-int guess_packet_type(char *buff, int bufflen, packet_type *type) {
+int guess_packet_type(const char *buff, int bufflen, packet_type *type) {
 	if(bufflen < 2) {
 		log_error("Invalid buffer!");
 		return -1;
@@ -11,13 +11,13 @@ int guess_packet_type(char *buff, int bufflen, packet_type *type) {
 	return 0;
 }
 
-// reads "buff" and inits "packet"
-int buff_to_packet_read_write(char *buff, int bufflen, packet_read_write *packet) {
+/* reads "buff" and inits "packet" */
+int buff_to_packet_read_write(const char *buff, int bufflen, packet_read_write *packet) {
 	int strLen, pos;
-	char *pnt;
+	const char *pnt;
 	
 	packet->op = (short) buff[1];
-	// el op de los paquetes write y read es 1 y 2
+	/* el op de los paquetes write y read es 1 y 2 */
 	if(packet->op != RRQ && packet->op != WRQ) {
 		log_error("Invalid packet type!");
 		return -1;
@@ -30,7 +30,7 @@ int buff_to_packet_read_write(char *buff, int bufflen, packet_read_write *packet
 		log_error("Buffer too short!");
 		return -1;
 	}
-	pos = 2;//posicion en la que busca el nombre del archivo
+	pos = 2; /* posicion en la que busca el nombre del archivo */
 	strLen = 0;
 	while(buff[pos + strLen] != '\0' && (pos + strLen) < bufflen) {
 		strLen++;
@@ -42,7 +42,7 @@ int buff_to_packet_read_write(char *buff, int bufflen, packet_read_write *packet
 	packet->filenamelen = strLen;
 	pnt = &buff[pos];
 	strncpy(packet->filename, pnt, packet->filenamelen);
-	pos += strLen + 1;//posicion en la que busca el modo
+	pos += strLen + 1; /* posicion en la que busca el modo */
 	strLen = 0;
 	while((buff[pos + strLen] != '\0') && (pos + strLen < bufflen)) {
 		strLen++;
@@ -57,8 +57,8 @@ int buff_to_packet_read_write(char *buff, int bufflen, packet_read_write *packet
 	return 0;
 }
 
-int buff_to_packet_data(char *buff, int bufflen, packet_data *packet) {
-	char *pnt;
+int buff_to_packet_data(const char *buff, int bufflen, packet_data *packet) {
+	const char *pnt;
 	
 	if(bufflen < MIN_DATA_SIZE) {
 		log_error("Buffer too short!");
@@ -82,7 +82,7 @@ int buff_to_packet_data(char *buff, int bufflen, packet_data *packet) {
 	return 0;
 }
 
-int buff_to_packet_ack(char *buff, int bufflen, packet_ack *packet) {
+int buff_to_packet_ack(const char *buff, int bufflen, packet_ack *packet) {
 	if(bufflen != ACK_SIZE) {
 		log_error("Incorrect buffer size!");
 		return -1;
@@ -98,9 +98,9 @@ int buff_to_packet_ack(char *buff, int bufflen, packet_ack *packet) {
 	return 0;
 }
 
-int buff_to_packet_error(char *buff, int bufflen, packet_error *packet) {
+int buff_to_packet_error(const char *buff, int bufflen, packet_error *packet) {
 	int strLen;
-	char *pnt;
+	const char *pnt;
 	
 	if(bufflen < MIN_ERROR_SIZE) {
 		log_error("Buffer too short!");
@@ -117,6 +117,7 @@ int buff_to_packet_error(char *buff, int bufflen, packet_error *packet) {
 	}
 	packet->error_code = (short) buff[3];
 	strLen = 4;
+	/* FIXME: check bufflen limit */
 	while(buff[strLen] != '\0') {
 		strLen++;
 	}
@@ -126,7 +127,7 @@ int buff_to_packet_error(char *buff, int bufflen, packet_error *packet) {
 	return 0;
 }
 
-int packet_data_to_bytes(char *buffer, packet_data *packet) {
+int packet_data_to_bytes(char *buffer, const packet_data *packet) {
 	int len;
 	char *pnt;
 	
@@ -140,7 +141,7 @@ int packet_data_to_bytes(char *buffer, packet_data *packet) {
 	return len;
 }
 
-int packet_ack_to_bytes(char *buffer, packet_ack *packet) {
+int packet_ack_to_bytes(char *buffer, const packet_ack *packet) {
 	int len = 4;
 	memset(buffer, 0, len);
 	buffer[1] = (char) packet->op;
@@ -149,7 +150,7 @@ int packet_ack_to_bytes(char *buffer, packet_ack *packet) {
 	return len;	
 }
 
-int packet_error_to_bytes(char *buffer, packet_error *packet) {
+int packet_error_to_bytes(char *buffer, const packet_error *packet) {
 	int len;
 	char *pnt;
 	
