@@ -82,16 +82,51 @@ void test_buff_to_packet_read_write() {
 }
 
 void test_buff_to_packet_data() {
-	//int len = 4 + 512;
-	//char buff[len];
-	//packet_data packet;
-	//int opcode = 3;
-	//int block = 10; // el bloque siempre empieza por 1 no puede existir un bloque menor que 1
-	//char *data = "Esto llega bien";
+	int len = 4 + 512;
+	char buff[len];
+	packet_data packet;
+	short opcode = 3;
+	short block = 10; // el bloque siempre empieza por 1 no puede existir un bloque menor que 1
+	char *data = "Esto llega bien\0";
+	char *errordata = "Esto hace que pete";
+	char *pnt;
+	int res;
 	
-	//memset(buff, 0, len*sizeof(char));
-	//buff[1] = opcode;
-	//memcpy(buff, data, strlen(data) + 1);
+	memset(buff, 0, len*sizeof(char));
+	buff[1] = (char) (opcode  & 0xff);
+	buff[2] = (char) (block >> 8);
+	buff[3] = (char) (block & 0xff);
+	pnt = &buff[4];
+	memcpy(pnt, data, sizeof(data));
+	
+	//buff to packet
+	res = buff_to_packet_data(buff, len, &packet);
+	assert(res == 0);
+	assert(packet.op == 3);
+	assert(packet.block == block);
+	assert(strcmp(packet.data, data) == 0);
+	
+	//wrong packet type
+	buff[1] = 2;
+	res = buff_to_packet_data(buff, len, &packet);
+	assert(res == -1);
+	
+	//wrong block size, to short
+	buff[1] = 3;
+	block = 0;
+	buff[2] = (char) (block >> 8);
+	buff[3] = (char) (block & 0xff);
+	res = buff_to_packet_data(buff, len, &packet);
+	assert(res == -1);
+	
+	//wrong data, string data doesn't have final
+	block = 10;
+	buff[2] = (char) (block >> 8);
+	buff[3] = (char) (block & 0xff);
+	pnt = &buff[4];
+	memcpy(pnt, errordata, sizeof(errordata));
+	res = buff_to_packet_data(buff, len, &packet);
+	assert(res == -1);
 	
 }
 

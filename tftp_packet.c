@@ -145,8 +145,7 @@ int packet_ack_to_bytes(char *buffer, packet_ack *packet) {
 	memset(buffer, 0, len);
 	buffer[1] = (char) packet->op;
 	buffer[2] = (char) packet->block >> 8;
-	buffer[3] = (char) packet->block
-	//packet->block = ((((short) buff[2]) * 10) + ((short) buff[3]));
+	buffer[3] = (char) packet->block & 0xff;
 	return len;	
 }
 
