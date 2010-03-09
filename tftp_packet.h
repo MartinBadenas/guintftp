@@ -16,29 +16,29 @@ typedef enum {
 } packet_type;
 
 typedef struct {
-	short op;
-	char *filename;
+	unsigned short op;
+	char filename[512];
 	unsigned short filenamelen;
-	char *mode;
+	char mode[512];
 	unsigned short modelen;
 } packet_read_write;
 
 typedef struct {
-	short op;
+	unsigned short op;
 	unsigned short block;
 	char data[512];
 	unsigned short datalen;
 } packet_data;
 
 typedef struct {
-	short op;
+	unsigned short op;
 	unsigned short block;
 } packet_ack;
 
 typedef struct {
-	short op;
-	short error_code;
-	char *errmsg;
+	unsigned short op;
+	unsigned short error_code;
+	char errmsg[512];
 	unsigned short errmsglen;
 } packet_error;
 
