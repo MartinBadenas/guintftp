@@ -74,7 +74,12 @@ int buff_to_packet_data(const char *buff, int bufflen, packet_data *packet) {
 		log_error("Buffer too long");
 		return -1;
 	}
-	packet->block = 0;
+	packet->block = ((short) buff[2]) << 8;
+	packet->block = packet->block | buff[3];
+	if(packet->block <= 0) {
+		log_error("Invalid block number!");
+		return -1;
+	}
 	if(packet->datalen > 0) {
 		pnt = &buff[4];
 		memcpy(packet->data, pnt, packet->datalen*sizeof(char));

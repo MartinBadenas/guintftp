@@ -1,6 +1,8 @@
 #include <assert.h>
 #include <string.h>
 #include "../tftp_packet.h"
+#include <stdio.h>
+#include <unistd.h>
 
 void test_guess_packet_type() {
 	packet_type type;
@@ -97,23 +99,27 @@ void test_buff_to_packet_read_write() {
 
 void test_buff_to_packet_data() {
 	char buff[4 + 512];
-	int len = sizeof(buff);
+	int len;
 	packet_data packet;
 	short opcode = 3;
 	short block = 10; /* el bloque siempre empieza por 1 no puede existir un bloque menor que 1 */
-	char *data = "Esto llega bien\0";
-	char *errordata = "Esto hace que pete";
+	char *data = "Esto llega bien";
 	char *pnt;
-	int res;
+	int res, i;
 	
+	len = strlen(data) + 5;
 	memset(buff, 0, len*sizeof(char));
-	buff[1] = (char) (opcode  & 0xff);
-	buff[2] = (char) (block >> 8);
-	buff[3] = (char) (block & 0xff);
+	buff[1] = (char) opcode  & 0xff;
+	buff[2] = (char) block >> 8;
+	buff[3] = (char) block & 0xff;
 	pnt = &buff[4];
-	memcpy(pnt, data, sizeof(data));
+	memcpy(pnt, data, strlen(data)+1);
 	
 	/* buff to packet */
+	for(i = 0; i < len; i++) {
+		printf("%d", buff[i]);
+	}
+	printf("\n");
 	res = buff_to_packet_data(buff, len, &packet);
 	assert(res == 0);
 	assert(packet.op == 3);
@@ -130,16 +136,7 @@ void test_buff_to_packet_data() {
 	block = 0;
 	buff[2] = (char) (block >> 8);
 	buff[3] = (char) (block & 0xff);
-	res = buff_to_packet_data(buff, len, &packet);
-	assert(res == -1);
-	
-	/* wrong data, string data doesn't have final */
-	block = 10;
-	buff[2] = (char) (block >> 8);
-	buff[3] = (char) (block & 0xff);
-	pnt = &buff[4];
-	memcpy(pnt, errordata, sizeof(errordata));
-	res = buff_to_packet_data(buff, len, &packet);
+	res = buff_to_packet_data(buff, sizeof(buff), &packet);
 	assert(res == -1);
 	
 }
