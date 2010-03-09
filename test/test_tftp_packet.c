@@ -1,5 +1,6 @@
 #include <assert.h>
 #include <string.h>
+#include <limits.h>
 #include "../tftp_packet.h"
 #include <stdio.h>
 #include <unistd.h>
@@ -229,15 +230,14 @@ void test_buff_to_packet_error() {
 	
 	/* buffer too long */
 	buff[1] = ERROR;
-	len = 517;
-	assert(buff_to_packet_error(buff, len, &error) == -1);
+	assert(buff_to_packet_error(buff, 517, &error) == -1);
 	
 	/* buffer too short */
-	buff[1] = ERROR;
-	len = 4;
-	assert(buff_to_packet_error(buff, len, &error) == -1);
+	assert(buff_to_packet_error(buff, 4, &error) == -1);
 	
-	/* TODO: filename not null terminated */
+	/* filename not null terminated */
+	buff[strlen(error_codes[i]) + 4] = -1;
+	assert(buff_to_packet_error(buff, len, &error) == -1);
 }
 
 void test_packet_data_to_bytes() {
@@ -267,24 +267,76 @@ void test_packet_data_to_bytes() {
 	data.op = DATA;
 	data.datalen = 513;
 	assert(packet_data_to_bytes(buff, &data) == -1);
-	
-	/* TODO: filename not null terminated */
-	
-	/* TODO: mode not null terminated */
-	
-	/* TODO: filenamelen too long */
-	
-	/* TODO: filenamelen too short */
-	
-	/* TODO: modelen too long */
-	
-	/* TODO: modelen too short */
 }
 
 void test_packet_ack_to_bytes() {
+	packet_ack ack;
+	int result;
+	char buff[4];
+	int len = sizeof(buff);
+	char expected[4] = {0, ACK, 0, 10};
+	
+	/* valid packet */
+	ack.block = 10;
+	ack.op = ACK;
+	result = packet_ack_to_bytes(buff, &ack);
+	assert(result == len);
+	assert(memcmp(expected, buff, sizeof(buff)) == 0);
+	
+	/* invalid packet */
+	ack.op = DATA;
+	result = packet_ack_to_bytes(buff, &ack);
+	assert(result == -1);
 }
 
 void test_packet_error_to_bytes() {
+	packet_error error;
+	char *string;
+	char buffer[516];
+	int stnglen, result, expectedlen;
+	
+	/* valid packet */
+	error.error_code = ERROR_FILE_NOT_FOUND;
+	error.op = ERROR;
+	error_code(error.error_code, string, &stnglen);
+	strncpy(error.errmsg, string, stnglen);
+	error.errmsglen = stnglen;
+	expectedlen = 4 + stnglen;
+	result = packet_error_to_bytes(buffer, &error);
+	assert(result == expectedlen);
+	
+	/* invalid opcode */
+	error.op = DATA;
+	result = packet_error_to_bytes(buffer, &error);
+	assert(result == -1);
+	
+	/* invalid error code, too long */
+	error.op = ERROR;
+	error.error_code = 8;
+	result = packet_error_to_bytes(buffer, &error);
+	assert(result == -1);
+	
+	/* invalid error code, too short */
+	error.error_code = 0;
+	result = packet_error_to_bytes(buffer, &error);
+	assert(result == -1);
+	
+	/* errmsg not null terminated */
+	error.error_code = ERROR_FILE_NOT_FOUND;
+	error.errmsg[error.errmsglen - 1] = -1;
+	result = packet_error_to_bytes(buffer, &error);
+	assert(result == -1);
+	
+	/* errmsglen too long */
+	error.errmsg[error.errmsglen - 1] = '\0';
+	error.errmsglen = USHRT_MAX;
+	result = packet_error_to_bytes(buffer, &error);
+	assert(result == -1);
+	
+	/* errmsglen too short */
+	error.errmsglen = 0;
+	result = packet_error_to_bytes(buffer, &error);
+	assert(result == -1);
 }
 
 void test_error_code() {

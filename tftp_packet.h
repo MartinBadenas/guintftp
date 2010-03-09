@@ -7,6 +7,15 @@
 #define MIN_ERROR_SIZE 5
 #define ACK_SIZE 4
 
+#define ERROR_CUSTOM 0;
+#define ERROR_FILE_NOT_FOUND 1;
+#define ERROR_ACCESS_VIOLATION 2;
+#define ERROR_DISK_FULL 3;
+#define ERROR_ILLEGAL_OPERATION 4;
+#define ERROR_UNKNOWN_TRANSFER_ID 5;
+#define ERROR_ALREADY_EXISTS 6;
+#define ERROR_NO_SUCH_USER 7;
+
 typedef enum {
 	RRQ=1,
 	WRQ=2,

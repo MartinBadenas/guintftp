@@ -16,9 +16,9 @@ int buff_to_packet_read_write(const char *buff, int bufflen, packet_read_write *
 	int strLen, pos;
 	const char *pnt;
 	
-	packet->op = (short) buff[1];
+	packet->op = (unsigned short) buff[1];
 	/* el op de los paquetes write y read es 1 y 2 */
-	if(packet->op != RRQ && packet->op != WRQ) {
+	if(buff[1] != RRQ && buff[1] != WRQ) {
 		log_error("Invalid packet type!");
 		return -1;
 	}
@@ -64,8 +64,8 @@ int buff_to_packet_data(const char *buff, int bufflen, packet_data *packet) {
 		log_error("Buffer too short!");
 		return -1;
 	}
-	packet->op = (short) buff[1];
-	if(packet->op != DATA) {
+	packet->op = (unsigned short) buff[1];
+	if(buff[1] != DATA) {
 		log_error("Invalid packet type!");
 		return -1;
 	}
@@ -92,8 +92,8 @@ int buff_to_packet_ack(const char *buff, int bufflen, packet_ack *packet) {
 		log_error("Incorrect buffer size!");
 		return -1;
 	}
-	packet->op = (short) buff[1];
-	if(packet->op != ACK) {
+	packet->op = (unsigned short) buff[1];
+	if(buff[1] != ACK) {
 		log_error("Invalid packet type!");
 		return -1;
 	}
@@ -115,8 +115,8 @@ int buff_to_packet_error(const char *buff, int bufflen, packet_error *packet) {
 		log_error("Buffer too long");
 		return -1;
 	}
-	packet->op = (short) buff[1];
-	if(packet->op != ERROR) {
+	packet->op = (unsigned short) buff[1];
+	if(buff[1] != ERROR) {
 		log_error("Invalid packet type!");
 		return -1;
 	}

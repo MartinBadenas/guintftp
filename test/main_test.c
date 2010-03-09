@@ -1,8 +1,8 @@
 #include "test_tftp_packet.h"
+#include "test_tftp_io.h"
 
 int main() {
-	test_buff_to_packet_data();
-	/* test tftp packet
+	/* test tftp packet */
 	test_guess_packet_type();
 	test_buff_to_packet_read_write();
 	test_buff_to_packet_data();
@@ -11,6 +11,10 @@ int main() {
 	test_packet_data_to_bytes();
 	test_packet_ack_to_bytes();
 	test_packet_error_to_bytes();
-	test_error_code(); */
+	test_error_code();
+	
+	/* test tftp_io */
+	test_read_block();
+	test_write_block();
 	return 0;
 }
