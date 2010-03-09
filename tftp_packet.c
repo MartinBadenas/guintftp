@@ -129,20 +129,19 @@ int buff_to_packet_error(const char *buff, int bufflen, packet_error *packet) {
 
 int packet_data_to_bytes(char *buffer, const packet_data *packet) {
 	int len;
-	char *pnt;
 	
 	len = MIN_DATA_SIZE + packet->datalen;
 	memset(buffer, 0, len);
 	buffer[1] = (char) packet->op;
 	buffer[2] = (char) packet->block >> 8;
 	buffer[3] = (char) packet->block & 0xff;
-	pnt = &buffer[4];
-	memcpy(pnt, packet->data, packet->datalen);
+	memcpy(&buffer[4], packet->data, packet->datalen);
 	return len;
 }
 
 int packet_ack_to_bytes(char *buffer, const packet_ack *packet) {
 	int len = 4;
+	
 	memset(buffer, 0, len);
 	buffer[1] = (char) packet->op;
 	buffer[2] = (char) packet->block >> 8;

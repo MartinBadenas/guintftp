@@ -11,8 +11,6 @@ void test_buff_to_packet_ack();
 
 void test_buff_to_packet_error();
 
-void test_packet_read_write_to_bytes();
-
 void test_packet_data_to_bytes();
 
 void test_packet_ack_to_bytes();

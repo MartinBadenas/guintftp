@@ -51,19 +51,23 @@ void test_buff_to_packet_read_write() {
 	assert(packet.op == 1);
 	assert(strcmp(packet.filename, filename) == 0);
 	assert(strcmp(packet.mode, mode) == 0);
+	assert(packet.filenamelen == strlen(filename));
+	assert(packet.modelen == strlen(mode));
 	
 	/* write packet */
 	memset(buff, 0, len);
 	buff[1] = 2;
 	pnt = &buff[2];
-	memcpy(pnt, filename, (strlen(filename) + 1)*sizeof(char));
-	pnt = &buff[strlen(filename) + 1];
-	memcpy(pnt, mode, (strlen(mode) + 1)*sizeof(char));
+	memcpy(pnt, filename, (strlen(filename) + 1));
+	pnt = &buff[strlen(filename) + 3];
+	memcpy(pnt, mode, (strlen(mode) + 1));
 	res = buff_to_packet_read_write(buff, len, &packet);
 	assert(res == 0);
 	assert(packet.op == 2);
 	assert(strcmp(packet.filename, filename) == 0);
 	assert(strcmp(packet.mode, mode) == 0);
+	assert(packet.filenamelen == strlen(filename));
+	assert(packet.modelen == strlen(mode));
 	
 	/* wrong packet type */
 	buff[1] = 3;
@@ -76,11 +80,19 @@ void test_buff_to_packet_read_write() {
 	assert(res == -1);
 	
 	/* wrong packet size, too long */
-	buff[1] = 2;
 	res = buff_to_packet_read_write(buff, 517, &packet);
 	assert(res == -1);
 	
-	/* TODO: filename not null terminated */
+	/* filename not null terminated */
+	buff[2 + strlen(filename)] = -1;
+	res = buff_to_packet_read_write(buff, len, &packet);
+	assert(res == -1);
+	
+	/* mode not null terminated */
+	buff[2 + strlen(filename)] = '\0';
+	buff[3 + strlen(filename) + strlen(mode)] = -1;
+	res = buff_to_packet_read_write(buff, len, &packet);
+	assert(res == -1);
 }
 
 void test_buff_to_packet_data() {
@@ -231,10 +243,45 @@ void test_buff_to_packet_error() {
 	/* TODO: filename not null terminated */
 }
 
-void test_packet_read_write_to_bytes() {
-}
-
 void test_packet_data_to_bytes() {
+	char buff[516];
+	char databuff[512];
+	packet_data data;
+	int len;
+	short block;
+	
+	/* valid packet */
+	data.op = DATA;
+	data.block = 10;
+	data.datalen = sizeof(databuff);
+	memcpy(data.data, databuff, data.datalen);
+	len = packet_data_to_bytes(buff, &data);
+	assert(len == 4 + data.datalen);
+	assert(buff[1] == DATA);
+	block = *(short*) &buff[2];
+	assert(block == data.block);
+	assert(memcmp(data.data, &buff[4], data.datalen) == 0);
+	
+	/* invalid opcode */
+	data.op = ACK;
+	assert(packet_data_to_bytes(buff, &data) == -1);
+	
+	/* buffer too long */
+	data.op = DATA;
+	data.datalen = 513;
+	assert(packet_data_to_bytes(buff, &data) == -1);
+	
+	/* TODO: filename not null terminated */
+	
+	/* TODO: mode not null terminated */
+	
+	/* TODO: filenamelen too long */
+	
+	/* TODO: filenamelen too short */
+	
+	/* TODO: modelen too long */
+	
+	/* TODO: modelen too short */
 }
 
 void test_packet_ack_to_bytes() {

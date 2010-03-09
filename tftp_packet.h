@@ -18,29 +18,28 @@ typedef enum {
 typedef struct {
 	short op;
 	char *filename;
-	short filenamelen;
+	unsigned short filenamelen;
 	char *mode;
-	short modelen;
+	unsigned short modelen;
 } packet_read_write;
 
 typedef struct {
 	short op;
-	short block;
-	/* max 512 bytes */
-	char *data;
-	short datalen;
+	unsigned short block;
+	char data[512];
+	unsigned short datalen;
 } packet_data;
 
 typedef struct {
 	short op;
-	short block;
+	unsigned short block;
 } packet_ack;
 
 typedef struct {
 	short op;
 	short error_code;
 	char *errmsg;
-	short errmsglen;
+	unsigned short errmsglen;
 } packet_error;
 
 int guess_packet_type(const char *buff, int bufflen, packet_type *type);
