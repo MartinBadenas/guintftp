@@ -4,6 +4,7 @@
 #include "../tftp_packet.h"
 #include <stdio.h>
 #include <unistd.h>
+#include <stdio.h>
 
 void test_guess_packet_type() {
 	packet_type type;
@@ -47,15 +48,15 @@ void test_buff_to_packet_read_write() {
 	buff[1] = 1;
 	pnt = &buff[2];
 	memcpy(pnt, filename, (strlen(filename) + 1)*sizeof(char));
-	pnt = &buff[strlen(filename) + 1];
+	pnt = &buff[strlen(filename) + 3];
 	memcpy(pnt, mode, (strlen(mode) + 1)*sizeof(char));
 	res = buff_to_packet_read_write(buff, len, &packet);
 	assert(res == 0);
 	assert(packet.op == 1);
 	assert(strcmp(packet.filename, filename) == 0);
 	assert(strcmp(packet.mode, mode) == 0);
-	assert(packet.filenamelen == strlen(filename));
-	assert(packet.modelen == strlen(mode));
+	assert(strlen(packet.filename) == strlen(filename));
+	assert(strlen(packet.mode) == strlen(mode));
 	
 	/* write packet */
 	memset(buff, 0, len);
@@ -69,8 +70,8 @@ void test_buff_to_packet_read_write() {
 	assert(packet.op == 2);
 	assert(strcmp(packet.filename, filename) == 0);
 	assert(strcmp(packet.mode, mode) == 0);
-	assert(packet.filenamelen == strlen(filename));
-	assert(packet.modelen == strlen(mode));
+	assert(strlen(packet.filename) == strlen(filename));
+	assert(strlen(packet.mode) == strlen(mode));
 	
 	/* wrong packet type */
 	buff[1] = 3;
@@ -88,6 +89,7 @@ void test_buff_to_packet_read_write() {
 	
 	/* filename not null terminated */
 	buff[2 + strlen(filename)] = -1;
+	printf("%s", &buff[2]);
 	res = buff_to_packet_read_write(buff, len, &packet);
 	assert(res == -1);
 	
@@ -96,6 +98,8 @@ void test_buff_to_packet_read_write() {
 	buff[3 + strlen(filename) + strlen(mode)] = -1;
 	res = buff_to_packet_read_write(buff, len, &packet);
 	assert(res == -1);
+	
+	/* TODO: invalid mode */
 }
 
 void test_buff_to_packet_data() {
@@ -204,7 +208,7 @@ void test_buff_to_packet_error() {
 	assert(error.op == ERROR);
 	assert(error.error_code == error_code);
 	assert(strcmp(custom_error, error.errmsg) == 0);
-	assert(strlen(custom_error) == error.errmsglen);
+	assert(strlen(custom_error) == strlen(error.errmsg));
 	
 	/* valid packet */
 	for(i = 0; i < 7; i++) {
@@ -221,8 +225,10 @@ void test_buff_to_packet_error() {
 		assert(error.op == ERROR);
 		assert(error.error_code == error_code);
 		assert(strcmp(error_codes[i], error.errmsg) == 0);
-		assert(strlen(error_codes[i]) == error.errmsglen);
+		assert(strlen(error_codes[i]) == strlen(error.errmsg));
 	}
+	
+	/* TODO: invalid error_code */
 	
 	/* invalid opcode */
 	buff[1] = ERROR + 1;
@@ -293,14 +299,13 @@ void test_packet_error_to_bytes() {
 	packet_error error;
 	char *string;
 	char buffer[516];
-	int stnglen, result, expectedlen;
+	uint16_t stnglen, result, expectedlen;
 	
 	/* valid packet */
 	error.error_code = ERROR_FILE_NOT_FOUND;
 	error.op = ERROR;
 	error_code(error.error_code, string, &stnglen);
 	strncpy(error.errmsg, string, stnglen);
-	error.errmsglen = stnglen;
 	expectedlen = 4 + stnglen;
 	result = packet_error_to_bytes(buffer, &error);
 	assert(result == expectedlen);
@@ -316,25 +321,9 @@ void test_packet_error_to_bytes() {
 	result = packet_error_to_bytes(buffer, &error);
 	assert(result == -1);
 	
-	/* invalid error code, too short */
-	error.error_code = 0;
-	result = packet_error_to_bytes(buffer, &error);
-	assert(result == -1);
-	
 	/* errmsg not null terminated */
 	error.error_code = ERROR_FILE_NOT_FOUND;
-	error.errmsg[error.errmsglen - 1] = -1;
-	result = packet_error_to_bytes(buffer, &error);
-	assert(result == -1);
-	
-	/* errmsglen too long */
-	error.errmsg[error.errmsglen - 1] = '\0';
-	error.errmsglen = USHRT_MAX;
-	result = packet_error_to_bytes(buffer, &error);
-	assert(result == -1);
-	
-	/* errmsglen too short */
-	error.errmsglen = 0;
+	error.errmsg[strlen(error.errmsg) - 1] = -1;
 	result = packet_error_to_bytes(buffer, &error);
 	assert(result == -1);
 }
@@ -349,7 +338,7 @@ void test_error_code() {
 	"File already exists.",
 	"No such user."
 	};
-	int i, len;
+	uint16_t i, len;
 	char msg[255];
 	for(i = 1; i < 8; i++) {
 		 assert(error_code(i, msg, &len) == 0);
