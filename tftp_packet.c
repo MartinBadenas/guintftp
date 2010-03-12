@@ -2,6 +2,7 @@
 #include "tftp_log.h"
 #include <string.h>
 #include <stdio.h>
+#include <ctype.h>
 
 int guess_packet_type(char *buff, uint16_t bufflen, packet_type *type) {
 	if(bufflen < 2) {
@@ -45,6 +46,9 @@ int buff_to_packet_read_write(char *buff, uint16_t bufflen, packet_read_write *p
 	if(packet->mode == NULL || packet->filename == NULL) {
 		log_error("Invalid packet!");
 		return -1;
+	}
+	for(i = 0; i < strlen(packet->mode); i++) {
+		packet->mode[i] = tolower(packet->mode[i]);
 	}
 	return 0;
 }
