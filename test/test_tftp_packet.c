@@ -88,8 +88,9 @@ void test_buff_to_packet_read_write() {
 	assert(res == -1);
 	
 	/* filename not null terminated */
+	printf("<%s>", &buff[3]);
 	buff[2 + strlen(filename)] = -1;
-	printf("%s", &buff[2]);
+	printf("<%s>", &buff[3]);
 	res = buff_to_packet_read_write(buff, len, &packet);
 	assert(res == -1);
 	
@@ -110,7 +111,7 @@ void test_buff_to_packet_data() {
 	short block = 10; /* el bloque siempre empieza por 1 no puede existir un bloque menor que 1 */
 	char *data = "Esto llega bien";
 	char *pnt;
-	int res, i;
+	int res;
 	
 	len = strlen(data) + 5;
 	memset(buff, 0, len*sizeof(char));
@@ -121,11 +122,7 @@ void test_buff_to_packet_data() {
 	memcpy(pnt, data, strlen(data)+1);
 	
 	/* buff to packet */
-	for(i = 0; i < len; i++) {
-		printf("%d", buff[i]);
-	}
-	printf("\n");
-	res = buff_to_packet_data(buff, len, &packet);
+	res = buff_to_packet_data(buff, sizeof(buff), &packet);
 	assert(res == 0);
 	assert(packet.op == 3);
 	assert(packet.block == block);
@@ -133,7 +130,7 @@ void test_buff_to_packet_data() {
 	
 	/* wrong packet type */
 	buff[1] = 2;
-	res = buff_to_packet_data(buff, len, &packet);
+	res = buff_to_packet_data(buff, sizeof(buff), &packet);
 	assert(res == -1);
 	
 	/* wrong block size, to short */
