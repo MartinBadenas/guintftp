@@ -32,7 +32,7 @@ int buff_to_packet_read_write(char *buff, uint16_t bufflen, packet_read_write *p
 	}
 	packet->filename = NULL;
 	packet->mode = NULL;
-	for(i = 0; i < bufflen; i++) {
+	for(i = 4; i < bufflen; i++) {
 		if(buff[i] == '\0') {
 			if(packet->mode != NULL) {
 				packet->filename = &buff[2];
@@ -81,20 +81,16 @@ int buff_to_packet_ack(char *buff, uint16_t bufflen, packet_ack *packet) {
 		log_error("Incorrect buffer size!");
 		return -1;
 	}
-	packet->op = (unsigned short) buff[1];
 	if(buff[1] != ACK) {
 		log_error("Invalid packet type!");
 		return -1;
 	}
-	
-	packet->block = ((short) buff[2]) << 8;
-	packet->block = packet->block | buff[3];
+	packet = (packet_ack*) buff;
 	return 0;
 }
 
 int buff_to_packet_error(char *buff, uint16_t bufflen, packet_error *packet) {
 	int strLen;
-	const char *pnt;
 	
 	if(bufflen < MIN_ERROR_SIZE) {
 		log_error("Buffer too short!");
@@ -104,19 +100,22 @@ int buff_to_packet_error(char *buff, uint16_t bufflen, packet_error *packet) {
 		log_error("Buffer too long");
 		return -1;
 	}
-	packet->op = (unsigned short) buff[1];
 	if(buff[1] != ERROR) {
 		log_error("Invalid packet type!");
 		return -1;
 	}
-	packet->error_code = (short) buff[3];
+	packet->op = buff[1];
+	packet->error_code = buff[3];
+	
 	strLen = 4;
-	/* FIXME: check bufflen limit */
-	while(buff[strLen] != '\0') {
+	while(buff[strLen] != '\0' && strLen < bufflen) {
 		strLen++;
 	}
-	pnt = &buff[4];
-	strncpy(packet->errmsg, pnt, strLen+1);
+	if(buff[strLen] != '\0') {
+		log_error("Not null terminated string!");
+		return -1;
+	}
+	packet->errmsg = &buff[4];
 	return 0;
 }
 
@@ -124,7 +123,7 @@ int packet_data_to_bytes(char *buffer, const packet_data *packet) {
 	int len;
 	
 	len = MIN_DATA_SIZE + packet->datalen;
-	memset(buffer, 0, len);
+	buffer[0] = (char) 0;
 	buffer[1] = (char) packet->op;
 	buffer[2] = (char) packet->block >> 8;
 	buffer[3] = (char) packet->block & 0xff;
@@ -133,19 +132,16 @@ int packet_data_to_bytes(char *buffer, const packet_data *packet) {
 }
 
 int packet_ack_to_bytes(char *buffer, const packet_ack *packet) {
-	int len = 4;
-	
-	memset(buffer, 0, len);
+	buffer[0] = (char) 0;
 	buffer[1] = (char) packet->op;
 	buffer[2] = (char) packet->block >> 8;
 	buffer[3] = (char) packet->block & 0xff;
-	return len;	
+	return 4;	
 }
 
 int packet_error_to_bytes(char *buffer, const packet_error *packet) {
 	int len;
 	int errmsglen;
-	char *pnt;
 	
 	errmsglen = strlen(packet->errmsg) + 1;
 	len = 4 + errmsglen;
@@ -153,11 +149,11 @@ int packet_error_to_bytes(char *buffer, const packet_error *packet) {
 		log_error("Bad error packet");
 		return -1;
 	}
-	memset(buffer, 0, len);
+	buffer[0] = (char) 0;
 	buffer[1] = (char) packet->op;
+	buffer[2] = (char) 0;
 	buffer[3] = (char) packet->error_code;
-	pnt = &buffer[4];
-	strncpy(pnt, packet->errmsg, errmsglen);
+	strncpy(&buffer[4], packet->errmsg, errmsglen);
 	return len;
 }
 
