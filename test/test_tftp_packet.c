@@ -39,13 +39,12 @@ void test_buff_to_packet_read_write() {
 	char buff[512+4];
 	int len = sizeof(buff);
 	packet_read_write packet;
-	char *filename = "/home/dani/file";
-	char *mode = "OCTET";
+	char filename[] = "/home/dani/file";
+	char mode[] = "OCTET";
 	char *pnt;
 	int res;
-	/*int i;
-	char c;*/
-	
+	int i;
+
 	/* read packet */
 	memset(buff, 0, len*sizeof(char));
 	buff[1] = 1;
@@ -57,18 +56,12 @@ void test_buff_to_packet_read_write() {
 	assert(res == 0);
 	assert(packet.op == 1);
 	assert(strcmp(packet.filename, filename) == 0);
-	printf("%s______", packet.mode);
-	/*i=0;
+	i=0;
 	while (mode[i])
 	{
-		//mode[i] = (char) tolower(mode[i]);
-		c = tolower(mode[i]);
-		//mode[i] = (char) c & 0xff;
-		sprintf(&mode[i], "%c", c);
-		//printf("%c...", c);
+		mode[i] = tolower(mode[i]);
 		i++;
-	}*/
-	printf("%s------", mode);
+	}
 	assert(strcmp(packet.mode, mode) == 0);
 	assert(strlen(packet.filename) == strlen(filename));
 	assert(strlen(packet.mode) == strlen(mode));
