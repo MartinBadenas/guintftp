@@ -16,6 +16,8 @@ int guess_packet_type(char *buff, uint16_t bufflen, packet_type *type) {
 /* reads "buff" and inits "packet" */
 int buff_to_packet_read_write(char *buff, uint16_t bufflen, packet_read_write *packet) {
 	int i;
+	int fincadenas = 0;
+	int iniciomodo = 0;
 	
 	/* el op de los paquetes write y read es 1 y 2 */
 	if(buff[1] != RRQ && buff[1] != WRQ) {
@@ -33,7 +35,26 @@ int buff_to_packet_read_write(char *buff, uint16_t bufflen, packet_read_write *p
 	}
 	packet->filename = NULL;
 	packet->mode = NULL;
+	/* todo: controlar que solo pasen el formtato correcto, 2 \0 y un modo predefinido */
 	for(i = 4; i < bufflen; i++) {
+		if(buff[i] == '\0') {
+			if(fincadenas == 0) {
+				iniciomodo = i + 1;
+			}
+			fincadenas++;
+		}
+	}
+	if(fincadenas == 2 && iniciomodo > 0) {
+		packet->filename = &buff[2];
+		packet->mode = &buff[iniciomodo];
+	}
+	else {
+		printf("%d_________", fincadenas);
+		log_error("Invalid packet!");
+		return -1;
+	}
+	
+	/*for(i = 4; i < bufflen; i++) {
 		if(buff[i] == '\0') {
 			if(packet->mode != NULL) {
 				packet->filename = &buff[2];
@@ -46,7 +67,7 @@ int buff_to_packet_read_write(char *buff, uint16_t bufflen, packet_read_write *p
 	if(packet->mode == NULL || packet->filename == NULL) {
 		log_error("Invalid packet!");
 		return -1;
-	}
+	}*/
 	for(i = 0; i < strlen(packet->mode); i++) {
 		packet->mode[i] = tolower(packet->mode[i]);
 	}

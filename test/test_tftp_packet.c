@@ -52,6 +52,8 @@ void test_buff_to_packet_read_write() {
 	memcpy(pnt, filename, (strlen(filename) + 1)*sizeof(char));
 	pnt = &buff[strlen(filename) + 3];
 	memcpy(pnt, mode, (strlen(mode) + 1)*sizeof(char));
+	/* todo: controlar el tamaño y que solo tenga 2 \0*/
+	len = 4 + strlen(filename) + 1 + strlen(mode) + 1;
 	res = buff_to_packet_read_write(buff, len, &packet);
 	assert(res == 0);
 	assert(packet.op == 1);
