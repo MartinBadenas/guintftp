@@ -4,6 +4,7 @@
 #include <stdint.h>
 
 #define MAX_PACKET_SIZE 516
+#define DATA_SIZE 512
 #define MIN_READ_WRITE_SIZE 6
 #define MIN_DATA_SIZE 4
 #define MIN_ERROR_SIZE 5
