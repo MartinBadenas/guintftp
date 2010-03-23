@@ -19,6 +19,7 @@ uint16_t read_block(const char *filename, uint16_t block, char *buff) {
 	off_t pos;
 	ssize_t num_bytes = 0;
 	
+	--block;
 	fd = open(filename, O_RDONLY);
 	if(fd == -1) {
 		log_error("Failed opening file");
@@ -45,6 +46,7 @@ uint16_t write_block(const char *filename, uint16_t block, const char *buff, uin
 	int fd;
 	ssize_t num_bytes = 0, error;
 	
+	--block;
 	fd = open(filename, O_WRONLY | O_APPEND | O_CREAT);
 	if(fd == -1) {
 		log_error("Failed opening file");
