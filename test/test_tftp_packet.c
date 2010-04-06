@@ -53,7 +53,7 @@ void test_buff_to_packet_read_write() {
 	memcpy(pnt, filename, (strlen(filename) + 1)*sizeof(char));
 	pnt = &buff[strlen(filename) + 3];
 	memcpy(pnt, mode, (strlen(mode) + 1)*sizeof(char));
-	/* todo: controlar el tamaño y que solo tenga 2 \0*/
+	
 	len = 4 + strlen(filename) + 1 + strlen(mode) + 1;
 	res = buff_to_packet_read_write(buff, len, &packet);
 	assert(res == 0);
@@ -99,19 +99,38 @@ void test_buff_to_packet_read_write() {
 	assert(res == -1);
 	
 	/* filename not null terminated */
-	printf("<%s>", &buff[3]);
 	buff[2 + strlen(filename)] = -1;
-	printf("<%s>", &buff[3]);
 	res = buff_to_packet_read_write(buff, len, &packet);
 	assert(res == -1);
 	
 	/* mode not null terminated */
 	buff[2 + strlen(filename)] = '\0';
-	buff[3 + strlen(filename) + strlen(mode)] = -1;
+	/*buff[3 + strlen(filename) + strlen(mode)] = -1;*/
+	len = 3 + strlen(filename) + strlen(mode);
 	res = buff_to_packet_read_write(buff, len, &packet);
 	assert(res == -1);
 	
-	/* TODO: invalid mode */
+	/* Reset values */
+	buff[1] = 1;
+	buff[3 + strlen(filename) + strlen(mode)] = '\0';
+	len = 4 + strlen(filename) + strlen(mode);
+	/* function check with correct value mode "octet" */
+	res = buff_to_packet_read_write(buff, len, &packet);
+	assert(res == 0);
+	/* change mode to "netascii" */
+	sprintf(&buff[3+strlen(filename)], "neTaScIi");
+	len = 4 + strlen(filename) + strlen("neTaScIi");
+	/* function check with correct value mode "netascii" */
+	res = buff_to_packet_read_write(buff, len, &packet);
+	assert(res == 0);
+	
+	/* change to incorrect mode "incorrecto" */
+	sprintf(&buff[3+strlen(filename)], "incorrecto");
+	len = 4 + strlen(filename) + strlen("incorrecto");
+	/* function check with incorrect value mode "incorrecto" */
+	res = buff_to_packet_read_write(buff, len, &packet);
+	assert(res == -1);
+	
 }
 
 void test_buff_to_packet_data() {
