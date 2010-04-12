@@ -135,13 +135,13 @@ void test_buff_to_packet_read_write() {
 
 void test_buff_to_packet_data() {
 	char buff[4 + 512];
-	int len;
-	packet_data packet;
+	uint16_t len;
+	packet_data *packet;
 	short opcode = 3;
 	short block = 10; /* el bloque siempre empieza por 1 no puede existir un bloque menor que 1 */
 	char *data = "Esto llega bien";
 	char *pnt;
-	int res;
+	uint16_t res;
 	
 	len = strlen(data) + 5;
 	memset(buff, 0, len*sizeof(char));
@@ -152,11 +152,11 @@ void test_buff_to_packet_data() {
 	memcpy(pnt, data, strlen(data)+1);
 	
 	/* buff to packet */
-	res = buff_to_packet_data(buff, sizeof(buff), &packet);
+	res = buff_to_packet_data(buff, len, &packet);
 	assert(res == 0);
-	assert(packet.op == 3);
-	assert(packet.block == block);
-	assert(strcmp(packet.data, data) == 0);
+	assert(packet->op == 3);
+	assert(packet->block == block);
+	assert(strcmp(packet->data, data) == 0);
 	
 	/* wrong packet type */
 	buff[1] = 2;
@@ -277,29 +277,28 @@ void test_packet_data_to_bytes() {
 	char buff[516];
 	char databuff[512];
 	packet_data data;
-	int len;
+	uint16_t len;
 	short block;
 	
 	/* valid packet */
 	data.op = DATA;
 	data.block = 10;
-	data.datalen = sizeof(databuff);
-	memcpy(data.data, databuff, data.datalen);
-	len = packet_data_to_bytes(buff, &data);
-	assert(len == 4 + data.datalen);
+	len = sizeof(databuff);
+	memcpy(data.data, databuff, len - 4);
+	assert(packet_data_to_bytes(buff, &data) == 0);
 	assert(buff[1] == DATA);
 	block = *(short*) &buff[2];
 	assert(block == data.block);
-	assert(memcmp(data.data, &buff[4], data.datalen) == 0);
+	assert(memcmp(data.data, &buff[4], len - 4) == 0);
 	
 	/* invalid opcode */
 	data.op = ACK;
 	assert(packet_data_to_bytes(buff, &data) == -1);
 	
-	/* buffer too long */
+	/* buffer too long 
 	data.op = DATA;
 	data.datalen = 513;
-	assert(packet_data_to_bytes(buff, &data) == -1);
+	assert(packet_data_to_bytes(buff, &data) == -1);*/
 }
 
 void test_packet_ack_to_bytes() {
