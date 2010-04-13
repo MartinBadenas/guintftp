@@ -103,7 +103,8 @@ int16_t buff_to_packet_ack(char *buff, uint16_t bufflen, packet_ack **packet) {
 	return 0;
 }
 
-int16_t buff_to_packet_error(char *buff, uint16_t bufflen, packet_error *packet) {
+int16_t buff_to_packet_error(char *buff, uint16_t bufflen, packet_error **packet) {
+	packet_error *pck;
 	int strLen;
 	
 	if(bufflen < MIN_ERROR_SIZE) {
@@ -118,9 +119,10 @@ int16_t buff_to_packet_error(char *buff, uint16_t bufflen, packet_error *packet)
 		log_error("Invalid packet type!");
 		return -1;
 	}
-	packet->op = buff[1];
-	packet->error_code = buff[3];
-	
+	if(buff[3] < 0 || buff[3] > 7) {
+		log_error("Invalid error code!");
+		return -1;
+	}
 	strLen = 4;
 	while(buff[strLen] != '\0' && strLen < bufflen) {
 		strLen++;
@@ -129,19 +131,22 @@ int16_t buff_to_packet_error(char *buff, uint16_t bufflen, packet_error *packet)
 		log_error("Not null terminated string!");
 		return -1;
 	}
-	packet->errmsg = &buff[4];
+	
+	*packet = (packet_error*) buff;
+	pck = *packet;
+	pck->op = ntohs(pck->op);
+	pck->error_code = ntohs(pck->error_code);
 	return 0;
 }
 
-int16_t packet_data_to_bytes(char *buffer, const packet_data *packet) {
-	buffer = (char*) packet;
-	/*
-	buffer[0] = (char) 0;
-	buffer[1] = (char) packet->op;
-	buffer[2] = (char) packet->block >> 8;
-	buffer[3] = (char) packet->block & 0xff;
-	memcpy(&buffer[4], packet->data, datalen);
-	*/
+int16_t packet_data_to_bytes(char **buffer, packet_data *packet) {
+	if(packet->op != DATA) {
+		log_error("invalid packet type");
+		return -1;
+	}
+	packet->op = htons(packet->op);
+	packet->block = htons(packet->block);
+	*buffer = (char*) packet;
 	return 0;
 }
 

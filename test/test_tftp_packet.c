@@ -208,11 +208,11 @@ void test_buff_to_packet_ack() {
 void test_buff_to_packet_error() {
 	 char buff[516];
 	 char *pnt;
-	 int len = 516;
+	 int len = sizeof(buff);
 	 int i, error_code;
-	 packet_error error;
-	 char *custom_error = "Custom error!!";
-	 char *error_codes[7] = {
+	 packet_error *error;
+	 char custom_error[] = "Custom error!!";
+	 char error_codes[][192] = {
 	"File not found.",
 	"Access violation.",
 	"Disk full or allocation exceeded.",
@@ -230,32 +230,36 @@ void test_buff_to_packet_error() {
 	pnt = &buff[4];
 	len = strlen(custom_error);
 	strncpy(pnt, custom_error, len);
+	error_code = 0;
 	len += 4;
 	assert(buff_to_packet_error(buff, len, &error) == 0);
-	assert(error.op == ERROR);
-	assert(error.error_code == error_code);
-	assert(strcmp(custom_error, error.errmsg) == 0);
-	assert(strlen(custom_error) == strlen(error.errmsg));
+	assert(error->op == ERROR);
+	assert(error->error_code == error_code);
+	assert(strcmp(custom_error, error->errmsg) == 0);
+	assert(strlen(custom_error) == strlen(error->errmsg));
 	
 	/* valid packet */
 	for(i = 0; i < 7; i++) {
 		memset(buff, 0, len);
 		buff[1] = ERROR;
 		error_code = i + 1;
-		buff[2] = (char) error_code >> 8;
-		buff[3] = (char) error_code & 0xff;
+		buff[2] = 0;
+		buff[3] = error_code;
 		pnt = &buff[4];
 		len = strlen(error_codes[i]);
 		strncpy(pnt, error_codes[i], len);
 		len += 4;
 		assert(buff_to_packet_error(buff, len, &error) == 0);
-		assert(error.op == ERROR);
-		assert(error.error_code == error_code);
-		assert(strcmp(error_codes[i], error.errmsg) == 0);
-		assert(strlen(error_codes[i]) == strlen(error.errmsg));
+		assert(error->op == ERROR);
+		assert(error->error_code == error_code);
+		assert(strcmp(error_codes[i], error->errmsg) == 0);
+		assert(strlen(error_codes[i]) == strlen(error->errmsg));
 	}
 	
 	/* TODO: invalid error_code */
+	buff[3] = 8;
+	assert(buff_to_packet_error(buff, len, &error) == -1);
+	buff[3] = 7;
 	
 	/* invalid opcode */
 	buff[1] = ERROR + 1;
@@ -269,12 +273,12 @@ void test_buff_to_packet_error() {
 	assert(buff_to_packet_error(buff, 4, &error) == -1);
 	
 	/* filename not null terminated */
-	buff[strlen(error_codes[i]) + 4] = -1;
+	buff[4 + strlen(error_codes[i-1])] = -1;
 	assert(buff_to_packet_error(buff, len, &error) == -1);
 }
 
 void test_packet_data_to_bytes() {
-	char buff[516];
+	char *buff;
 	char databuff[512];
 	packet_data data;
 	uint16_t len;
@@ -283,9 +287,9 @@ void test_packet_data_to_bytes() {
 	/* valid packet */
 	data.op = DATA;
 	data.block = 10;
-	len = sizeof(databuff);
-	memcpy(data.data, databuff, len - 4);
-	assert(packet_data_to_bytes(buff, &data) == 0);
+	len = 516;
+	memcpy(data.data, databuff, len);
+	assert(packet_data_to_bytes(&buff, &data) == 0);
 	assert(buff[1] == DATA);
 	block = *(short*) &buff[2];
 	assert(block == data.block);
@@ -293,7 +297,11 @@ void test_packet_data_to_bytes() {
 	
 	/* invalid opcode */
 	data.op = ACK;
-	assert(packet_data_to_bytes(buff, &data) == -1);
+	assert(packet_data_to_bytes(&buff, &data) == -1);
+	assert(buff[0] == DATA);
+	assert(buff[2] == 10);
+	printf("%d", buff[2]);
+	assert(memcmp(&buff[3], data.data, len) == 0);
 	
 	/* buffer too long 
 	data.op = DATA;

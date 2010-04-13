@@ -47,7 +47,7 @@ typedef struct {
 typedef struct {
 	uint16_t op;
 	uint16_t error_code;
-	char *errmsg;
+	char errmsg[512];
 } packet_error;
 
 int16_t guess_packet_type(char *buff, uint16_t bufflen, packet_type *type);
@@ -58,9 +58,9 @@ int16_t buff_to_packet_data(char *buff, uint16_t bufflen, packet_data **packet);
 
 int16_t buff_to_packet_ack(char *buff, uint16_t bufflen, packet_ack **packet);
 
-int16_t buff_to_packet_error(char *buff, uint16_t bufflen, packet_error *packet);
+int16_t buff_to_packet_error(char *buff, uint16_t bufflen, packet_error **packet);
 
-int16_t packet_data_to_bytes(char *buffer, const packet_data *packet);
+int16_t packet_data_to_bytes(char **buffer, packet_data *packet);
 
 int16_t packet_ack_to_bytes(char *buffer, const packet_ack *packet);
 
