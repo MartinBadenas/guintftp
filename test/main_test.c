@@ -2,9 +2,9 @@
 #include "test_tftp_io.h"
 
 int main() {
-	/* test tftp packet 
+	/* test tftp packet */
 	test_guess_packet_type();
-	test_buff_to_packet_read_write();*/ 
+	test_buff_to_packet_read_write();
 	test_buff_to_packet_data();
 	test_buff_to_packet_ack();
 	test_buff_to_packet_error();

@@ -5,7 +5,7 @@
 #include <stdio.h>
 #include <ctype.h>
 
-uint16_t guess_packet_type(char *buff, uint16_t bufflen, packet_type *type) {
+int16_t guess_packet_type(char *buff, uint16_t bufflen, packet_type *type) {
 	if(bufflen < 2) {
 		log_error("Invalid buffer!");
 		return -1;
@@ -15,7 +15,7 @@ uint16_t guess_packet_type(char *buff, uint16_t bufflen, packet_type *type) {
 }
 
 /* reads "buff" and inits "packet" */
-uint16_t buff_to_packet_read_write(char *buff, uint16_t bufflen, packet_read_write *packet) {
+int16_t buff_to_packet_read_write(char *buff, uint16_t bufflen, packet_read_write *packet) {
 	int i;
 	
 	/* el op de los paquetes write y read es 1 y 2 */
@@ -59,7 +59,7 @@ uint16_t buff_to_packet_read_write(char *buff, uint16_t bufflen, packet_read_wri
 	return 0;
 }
 
-uint16_t buff_to_packet_data(char *buff, uint16_t bufflen, packet_data **packet) {
+int16_t buff_to_packet_data(char *buff, uint16_t bufflen, packet_data **packet) {
 	packet_data *pck;
 	
 	if(bufflen < MIN_DATA_SIZE) {
@@ -85,7 +85,9 @@ uint16_t buff_to_packet_data(char *buff, uint16_t bufflen, packet_data **packet)
 	return 0;
 }
 
-uint16_t buff_to_packet_ack(char *buff, uint16_t bufflen, packet_ack *packet) {
+int16_t buff_to_packet_ack(char *buff, uint16_t bufflen, packet_ack **packet) {
+	packet_ack *pck;
+	
 	if(bufflen != ACK_SIZE) {
 		log_error("Incorrect buffer size!");
 		return -1;
@@ -94,11 +96,14 @@ uint16_t buff_to_packet_ack(char *buff, uint16_t bufflen, packet_ack *packet) {
 		log_error("Invalid packet type!");
 		return -1;
 	}
-	packet = (packet_ack*) buff;
+	*packet = (packet_ack*) buff;
+	pck = *packet;
+	pck->op = ntohs(pck->op);
+	pck->block = ntohs(pck->block);
 	return 0;
 }
 
-uint16_t buff_to_packet_error(char *buff, uint16_t bufflen, packet_error *packet) {
+int16_t buff_to_packet_error(char *buff, uint16_t bufflen, packet_error *packet) {
 	int strLen;
 	
 	if(bufflen < MIN_ERROR_SIZE) {
@@ -128,7 +133,7 @@ uint16_t buff_to_packet_error(char *buff, uint16_t bufflen, packet_error *packet
 	return 0;
 }
 
-uint16_t packet_data_to_bytes(char *buffer, const packet_data *packet) {
+int16_t packet_data_to_bytes(char *buffer, const packet_data *packet) {
 	buffer = (char*) packet;
 	/*
 	buffer[0] = (char) 0;
@@ -140,7 +145,7 @@ uint16_t packet_data_to_bytes(char *buffer, const packet_data *packet) {
 	return 0;
 }
 
-uint16_t packet_ack_to_bytes(char *buffer, const packet_ack *packet) {
+int16_t packet_ack_to_bytes(char *buffer, const packet_ack *packet) {
 	buffer[0] = (char) 0;
 	buffer[1] = (char) packet->op;
 	buffer[2] = (char) packet->block >> 8;
@@ -148,7 +153,7 @@ uint16_t packet_ack_to_bytes(char *buffer, const packet_ack *packet) {
 	return 4;	
 }
 
-uint16_t packet_error_to_bytes(char *buffer, const packet_error *packet) {
+int16_t packet_error_to_bytes(char *buffer, const packet_error *packet) {
 	int len;
 	int errmsglen;
 	
@@ -166,7 +171,7 @@ uint16_t packet_error_to_bytes(char *buffer, const packet_error *packet) {
 	return len;
 }
 
-uint16_t error_code(uint16_t error_code, char *string, uint16_t *len) {
+int16_t error_code(uint16_t error_code, char *string, uint16_t *len) {
 	static char *error_codes[7] = {
 	"File not found.",
 	"Access violation.",

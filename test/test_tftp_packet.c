@@ -10,7 +10,7 @@
 
 void test_guess_packet_type() {
 	packet_type type;
-	int r;
+	int16_t r;
 	char buff[] = {0, 1};
 	
 	r = guess_packet_type(buff, 2, &type);
@@ -141,7 +141,7 @@ void test_buff_to_packet_data() {
 	short block = 10; /* el bloque siempre empieza por 1 no puede existir un bloque menor que 1 */
 	char *data = "Esto llega bien";
 	char *pnt;
-	uint16_t res;
+	int16_t res;
 	
 	len = strlen(data) + 5;
 	memset(buff, 0, len*sizeof(char));
@@ -176,18 +176,18 @@ void test_buff_to_packet_data() {
 void test_buff_to_packet_ack() {
 	char buff[4];
 	int len = sizeof(buff);
-	packet_ack ack;
+	packet_ack *ack;
 	short i;
 	
 	/* valid packet */
-	buff[0] = 0;
-	buff[1] = ACK;
 	for(i = 0; i < 512; i++) {
-		buff[2] = (char) i >> 8;
-		buff[3] = (char) i & 0xff;
+		buff[0] = 0;
+		buff[1] = ACK;
+		buff[2] = (unsigned char) (i >> 8);
+		buff[3] = (unsigned char) (i & 0xff);
 		assert(buff_to_packet_ack(buff, len, &ack) == 0);
-		assert(ack.op == ACK);
-		assert(ack.block == i);
+		assert(ack->op == ACK);
+		assert(ack->block == i);
 	}
 	
 	/* invalid packet op */
