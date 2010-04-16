@@ -1,7 +1,10 @@
 #ifndef TEST_TFTP_PACKET_H_
 #define TEST_TFTP_PACKET_H_
+#include "../tftp_packet.h"
 
 void test_guess_packet_type();
+
+void test_get_packet_read_write(packet_read_write *packet, char *mode);
 
 void test_buff_to_packet_read_write();
 

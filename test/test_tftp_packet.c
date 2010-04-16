@@ -40,6 +40,12 @@ void test_guess_packet_type() {
 	assert(r == -1);
 }
 
+void test_get_packet_read_write(packet_read_write *packet, char *mode) {
+	packet->op = 1;
+	packet->filename = "/home/dani/file";
+	packet->mode = mode;
+}
+
 void test_buff_to_packet_read_write() {
 	char buff[512+4];
 	int len = sizeof(buff);
