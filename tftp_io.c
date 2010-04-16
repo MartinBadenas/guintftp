@@ -5,7 +5,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 
-int close_file(int fd) {
+int16_t close_file(int fd) {
 	if(close(fd) == -1) {
 		log_error("Failed closing file");
 		return -1;
@@ -13,27 +13,37 @@ int close_file(int fd) {
 	return 0;
 }
 
-uint16_t read_block(const char *filename, uint16_t block, char *buff) {
+int open_lseek(const char *filename, off_t desiredpos, int flags) {
 	int fd;
-	off_t desiredpos;
 	off_t pos;
-	ssize_t num_bytes = 0;
 	
-	--block;
-	fd = open(filename, O_RDONLY);
+	fd = open(filename, flags);
 	if(fd == -1) {
-		log_error("Failed opening file");
 		return -1;
 	}
-	desiredpos = block * DATA_SIZE;
 	pos = lseek(fd, desiredpos, SEEK_SET);
 	if(pos == -1 || pos != desiredpos) {
 		log_error("lseek error");
 		return -1;
 	}
-	while(num_bytes += read(fd, &buff[num_bytes], DATA_SIZE) > 0);
+	return fd;
+}
+
+int16_t read_bytes(const char *filename, off_t desiredpos, char *buff, uint16_t bufflen) {
+	int fd;
+	ssize_t num_bytes = 0, num_readed = 0;
 	
-	if(num_bytes == -1) {
+	fd = open_lseek(filename, desiredpos, O_RDONLY);
+	if(fd == -1) {
+		log_error("Failed opening file");
+		return -1;
+	}
+	while((num_readed = read(fd, &buff[num_bytes], bufflen)) > 0) {
+		bufflen -= num_readed;
+		num_bytes += num_readed;
+	}
+	
+	if(num_bytes == -1 || bufflen != 0) {
 		log_error("Failed reading file");
 		return -1;
 	}
@@ -42,19 +52,20 @@ uint16_t read_block(const char *filename, uint16_t block, char *buff) {
 	
 	return num_bytes;
 }
-uint16_t write_block(const char *filename, uint16_t block, const char *buff, uint16_t bufflen) {
+int16_t write_bytes(const char *filename, off_t desiredpos, const char *buff, uint16_t bufflen) {
 	int fd;
-	ssize_t num_bytes = 0, error;
+	ssize_t num_bytes = 0, error, writelen;
 	
-	--block;
-	fd = open(filename, O_WRONLY | O_APPEND | O_CREAT);
+	fd = open_lseek(filename, desiredpos, O_WRONLY | O_CREAT);
 	if(fd == -1) {
 		log_error("Failed opening file");
 		return -1;
 	}
+	writelen = bufflen;
 	while(error != -1 && num_bytes != bufflen) {
-		error = write(fd, &buff[num_bytes], bufflen);
+		error = write(fd, &buff[num_bytes], writelen);
 		num_bytes += error;
+		writelen -= error;
 	}
 	
 	if(error == -1) {

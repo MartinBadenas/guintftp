@@ -62,10 +62,10 @@ int16_t buff_to_packet_error(char *buff, uint16_t bufflen, packet_error **packet
 
 int16_t packet_data_to_bytes(char **buffer, packet_data *packet);
 
-int16_t packet_ack_to_bytes(char *buffer, const packet_ack *packet);
+int16_t packet_ack_to_bytes(char **buffer, packet_ack *packet);
 
-int16_t packet_error_to_bytes(char *buffer, const packet_error *packet);
+int16_t packet_error_to_bytes(char **buffer, packet_error *packet);
 
-int16_t error_code(uint16_t error_code, char *string, uint16_t *len);
+int16_t error_code(uint16_t error_code, char **string, uint16_t *len);
 
 #endif /*TFTP_PACKET_H_*/

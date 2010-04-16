@@ -7,6 +7,7 @@
 #include <ctype.h>
 
 #include "../tftp_packet.h"
+#include "../tftp_log.h"
 
 void test_guess_packet_type() {
 	packet_type type;
@@ -32,6 +33,9 @@ void test_guess_packet_type() {
 	r = guess_packet_type(buff, 2, &type);
 	assert(r == 0);
 	assert(type == ERROR);
+	buff[1] = 6;
+	r = guess_packet_type(buff, 2, &type);
+	assert(r == -1);
 	r = guess_packet_type(buff, 1, &type);
 	assert(r == -1);
 }
@@ -298,10 +302,6 @@ void test_packet_data_to_bytes() {
 	/* invalid opcode */
 	data.op = ACK;
 	assert(packet_data_to_bytes(&buff, &data) == -1);
-	assert(buff[0] == DATA);
-	assert(buff[2] == 10);
-	printf("%d", buff[2]);
-	assert(memcmp(&buff[3], data.data, len) == 0);
 	
 	/* buffer too long 
 	data.op = DATA;
@@ -312,54 +312,56 @@ void test_packet_data_to_bytes() {
 void test_packet_ack_to_bytes() {
 	packet_ack ack;
 	int result;
-	char buff[4];
+	char *buff;
 	int len = sizeof(buff);
 	char expected[4] = {0, ACK, 0, 10};
 	
 	/* valid packet */
 	ack.block = 10;
 	ack.op = ACK;
-	result = packet_ack_to_bytes(buff, &ack);
+	result = packet_ack_to_bytes(&buff, &ack);
 	assert(result == len);
 	assert(memcmp(expected, buff, sizeof(buff)) == 0);
 	
 	/* invalid packet */
 	ack.op = DATA;
-	result = packet_ack_to_bytes(buff, &ack);
+	result = packet_ack_to_bytes(&buff, &ack);
 	assert(result == -1);
 }
 
 void test_packet_error_to_bytes() {
 	packet_error error;
 	char *string;
-	char buffer[516];
-	uint16_t stnglen, result, expectedlen;
+	char *buffer;
+	int16_t result;
+	uint16_t stnglen, expectedlen;
 	
 	/* valid packet */
 	error.error_code = ERROR_FILE_NOT_FOUND;
 	error.op = ERROR;
-	error_code(error.error_code, string, &stnglen);
+	assert(error_code(error.error_code, &string, &stnglen) == 0);
 	strncpy(error.errmsg, string, stnglen);
-	expectedlen = 4 + stnglen;
-	result = packet_error_to_bytes(buffer, &error);
+	expectedlen = 5 + stnglen;
+	result = packet_error_to_bytes(&buffer, &error);
 	assert(result == expectedlen);
 	
 	/* invalid opcode */
 	error.op = DATA;
-	result = packet_error_to_bytes(buffer, &error);
+	result = packet_error_to_bytes(&buffer, &error);
 	assert(result == -1);
 	
 	/* invalid error code, too long */
 	error.op = ERROR;
 	error.error_code = 8;
-	result = packet_error_to_bytes(buffer, &error);
+	result = packet_error_to_bytes(&buffer, &error);
 	assert(result == -1);
 	
-	/* errmsg not null terminated */
+	/* TODO: not null terminated string */
+	/* errmsg not null terminated 
 	error.error_code = ERROR_FILE_NOT_FOUND;
 	error.errmsg[strlen(error.errmsg) - 1] = -1;
-	result = packet_error_to_bytes(buffer, &error);
-	assert(result == -1);
+	result = packet_error_to_bytes(&buffer, &error);
+	assert(result == -1);*/
 }
 
 void test_error_code() {
@@ -373,12 +375,12 @@ void test_error_code() {
 	"No such user."
 	};
 	uint16_t i, len;
-	char msg[255];
+	char *msg;
 	for(i = 1; i < 8; i++) {
-		 assert(error_code(i, msg, &len) == 0);
+		 assert(error_code(i, &msg, &len) == 0);
 		 assert(strcmp(msg, error_codes[i-1]) == 0);
 	}
-	assert(error_code(0, msg, &len) == -1);
-	assert(error_code(-1, msg, &len) == -1);
-	assert(error_code(7, msg, &len) == -1);
+	assert(error_code(0, &msg, &len) == -1);
+	assert(error_code(-1, &msg, &len) == -1);
+	assert(error_code(8, &msg, &len) == -1);
 }
