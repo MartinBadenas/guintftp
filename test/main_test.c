@@ -25,6 +25,7 @@ int main() {
 	
 	/* test tftp_mode */
 	text_move_right_insert();
+	text_move_right_put_after();
 	test_mode_to_chars();
 	return 0;
 }
