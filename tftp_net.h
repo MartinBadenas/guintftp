@@ -1,9 +1,11 @@
 #ifndef TFTP_NET_H_
 #define TFTP_NET_H_
 
-void open_conn(struct connection *conn, int port);
-void send_packet(struct connection *conn, char *packet);
-void recv_packet(struct connection *conn, char *packet);
-void close_conn(struct connection *conn);
+#include "tftp_management.h"
+
+int open_serv_conn(connection *conn, int port);
+int send_packet(connection *conn, char *packet, int len);
+int recv_packet(connection *conn, char *packet, int maxlen);
+int close_conn(connection *conn);
 
 #endif /*TFTP_NET_H_*/
