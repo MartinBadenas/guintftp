@@ -5,7 +5,8 @@
 #include <string.h>
 #include <unistd.h>
 
-int open_serv_conn(connection *conn, int port) {
+
+int16_t open_common(connection *conn, int port) {
 	int socketfd;
 	
 	socketfd = socket(AF_INET, SOCK_DGRAM, 0);
@@ -18,6 +19,16 @@ int open_serv_conn(connection *conn, int port) {
 	memset(&conn->address, 0, conn->address_len);
 	conn->address.sin_family = AF_INET;
 	conn->address.sin_port = htons(port);
+	return 0;
+}
+
+int16_t open_server_conn(connection *conn, int port) {
+	int res;
+	
+	res = open_common(conn, port);
+	if(res == -1) {
+		return -1;
+	}
 	conn->address.sin_addr.s_addr = INADDR_ANY;
 	if(bind(conn->socket, (struct sockaddr *)&conn->address, conn->address_len) == -1) {
 		log_error("error binding connection");
@@ -26,7 +37,16 @@ int open_serv_conn(connection *conn, int port) {
 	
 	return 0;
 }
-int send_packet(connection *conn, char *packet, int len) {
+
+int16_t open_client_conn(connection *conn, struct in_addr *serv_address, int port) {
+	if(open_common(conn, port) == -1) {
+		return -1;
+	}
+	conn->address.sin_addr = *serv_address;
+	return 0;
+}
+
+int16_t send_packet(connection *conn, char *packet, int len) {
 	ssize_t numSent;
 	
 	numSent = sendto(conn->socket, packet, len, 0, (struct sockaddr *) &conn->address, sizeof(conn->address_len));
@@ -37,7 +57,7 @@ int send_packet(connection *conn, char *packet, int len) {
 	
 	return 0;
 }
-int recv_packet(connection *conn, char *packet, int maxlen) {
+int16_t recv_packet(connection *conn, char *packet, int maxlen) {
 	ssize_t numRecv;
 	
 	numRecv = recvfrom(conn->socket, packet, maxlen, 0, (struct sockaddr *) &conn->address, &conn->address_len);
@@ -48,6 +68,6 @@ int recv_packet(connection *conn, char *packet, int maxlen) {
 	return numRecv;
 }
 
-int close_conn(connection *conn) {
+int16_t close_conn(connection *conn) {
 	return close(conn->socket);
 }
