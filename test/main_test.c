@@ -27,5 +27,7 @@ int main() {
 	text_move_right_insert();
 	text_move_right_put_after();
 	test_mode_to_chars();
+	test_delete_character();
+	test_chars_to_mode();
 	return 0;
 }

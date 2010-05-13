@@ -64,3 +64,35 @@ void test_mode_to_chars() {
 	
 	
 }
+
+void test_delete_character() {
+	char texto[] = "prueba";
+	int16_t res;
+	
+	res = delete_character(1, texto);
+	assert(res == 0);
+	
+	res = delete_character(1, texto);
+	assert(res == 0);
+	
+	res = delete_character(4, texto);
+	assert(res == -1);
+}
+
+void test_chars_to_mode() {
+	char textoorigen[100] = "texto con ( \\n\\r \n\r ) , ( \\r\\n \r\n ) , ( \\n \n ) y ( \\r \r ) que pasan a ser \\n";
+	char textofinal[100] = "texto con ( \\n\\r \n ) , ( \\r\\n \n ) , ( \\n \n ) y ( \\r \r ) que pasan a ser \\n";
+	int16_t res;
+	char mode[9] = "octet";
+	packet_read_write packet;
+	
+	test_get_packet_read_write(&packet, mode);
+	res = chars_to_mode(&packet, textoorigen);
+	assert(res == 0);
+	
+	sprintf(mode, "netascii");
+	test_get_packet_read_write(&packet, mode);
+	res = chars_to_mode(&packet, textoorigen);
+	assert(res == 2);
+	assert(strcmp(textoorigen, textofinal) == 0);
+}
