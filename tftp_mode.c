@@ -90,12 +90,39 @@ int16_t chars_to_mode(packet_read_write *reference, char *text) {
 		i = 1;
 		/*si encuentra \r\n o \n\r se quita la \r*/
 		while(i < strlen(text) && i < DATA_SIZE) {
-				if((text[i - 1] == '\r' && text[i] == '\n')
-				|| (text[i -1] == '\n' && text[i] == '\r')) {
-					
+				if(text[i - 1] == '\r' && text[i] == '\n') {
+					delete_character(i - 1, text);
+					result++;
 				}
+				else if(text[i - 1] == '\n' && text[i] == '\r') {
+					delete_character(i, text);
+					result++;
+				}
+				i++;
 		}
 	}
 	/* no changes, return 0 */
 	return result;
+}
+
+int16_t delete_character(int16_t position, char *text) {
+	int16_t max;
+	
+	if(position < 0) {
+		log_error("Incorrect position, not negative");
+		return -1;
+	}
+	
+	max = strlen(text);
+	
+	if(position >= max) {
+		log_error("Incorrect position, to long");
+		return -1;
+	}
+	
+	while(position < max) {
+		text[position] = text[position + 1];
+		position++;
+	}
+	return 0;
 }
