@@ -71,9 +71,15 @@ void test_delete_character() {
 	
 	res = delete_character(1, texto);
 	assert(res == 0);
+	assert(strlen(texto) == 5);
 	
 	res = delete_character(1, texto);
 	assert(res == 0);
+	assert(strlen(texto) == 4);
+	
+	res = delete_character(3, texto);
+	assert(res == 0);
+	assert(strlen(texto) == 3);
 	
 	res = delete_character(4, texto);
 	assert(res == -1);
