@@ -3,7 +3,7 @@
 #include "test_tftp_mode.h"
 #include "../tftp_log.h"
 
-int main() {
+int main_test() {
 	/* test tftp packet */
 	/*log_info("tftp packet start");
 	test_guess_packet_type();
