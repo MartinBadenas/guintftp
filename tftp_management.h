@@ -11,7 +11,7 @@ typedef struct {
 	unsigned int address_len;
 } connection;
 
-void dispatch_request(char *paquet, uint16_t len);
+void dispatch_request(char *paquet, uint16_t len, connection *parent_conn);
 void send_file(connection *conn, packet_read_write *paquet);
 void receive_file(connection *conn, packet_read_write *paquet);
 

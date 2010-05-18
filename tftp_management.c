@@ -3,14 +3,15 @@
 #include "tftp_log.h"
 #include "tftp_net.h"
 
-void dispatch_request(char *packet, uint16_t len) {
+void dispatch_request(char *packet, uint16_t len, connection *parent_conn) {
 	int16_t error;
 	packet_type type;
 	packet_read_write first_packet;
 	connection conn;
-	int port = 1000;
+	struct in_addr client;
+	int port = parent_conn->address.sin_port;
 	
-	error = guess_packet_type(packet, 1, &type);
+	error = guess_packet_type(packet, len, &type);
 	if(error == -1) {
 		return;
 	}
@@ -18,7 +19,9 @@ void dispatch_request(char *packet, uint16_t len) {
 	if(error == -1) {
 		return;
 	}
-	error = open_server_conn(&conn, port);
+	client = parent_conn->address.sin_addr;
+	log_info("Opening connection to client from new child procces (forked)");
+	error = open_client_conn(&conn, &client, port);
 	if(error == -1) {
 		return;
 	}
@@ -33,6 +36,7 @@ void dispatch_request(char *packet, uint16_t len) {
 		log_error("Not valid first packet type, not RRQ or WRQ (shouldn't reach this code)");
 		return;
 	}
+	close_conn(&conn);
 	log_info("Work done, bye!");
 }
 void send_file(connection *conn, packet_read_write *packet) {
