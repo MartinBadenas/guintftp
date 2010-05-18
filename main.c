@@ -48,6 +48,7 @@ int main(int argc, char *argv[]) {
 		}
 		if(pid == 0) {
 			dispatch_request(first_packet, packet_len, &conn);
+			return 0;
 		}
 	}
 	close_conn(&conn);
