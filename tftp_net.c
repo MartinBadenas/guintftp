@@ -48,8 +48,11 @@ int16_t open_client_conn(connection *conn, struct in_addr *serv_address, int por
 
 int16_t send_packet(connection *conn, char *packet, int len) {
 	ssize_t numSent;
-	
-	numSent = sendto(conn->socket, packet, len, 0, (struct sockaddr *) &conn->address, sizeof(conn->address_len));
+	/**
+
+sendto(int s, const void *buf, size_t len, int flags, const struct sockaddr *to, socklen_t tolen);
+	*/
+	numSent = sendto(conn->socket, packet, len, 0, (struct sockaddr *) &conn->address, conn->address_len);
 	if(numSent == -1) {
 		log_error("error sending data");
 		return -1;

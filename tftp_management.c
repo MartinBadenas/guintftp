@@ -53,9 +53,9 @@ void receive_file(connection *conn, packet_read_write *first_packet) {
 	
 	log_info("Receiving file!! uee");
 	filepos = 0;
+	ack.op = ACK;
+	ack.block = 0;
 	do {
-		ack.op = ACK;
-		ack.block = 0;
 		send_bufflen = packet_ack_to_bytes(&send_buff, &ack);
 		if(send_bufflen == -1) {
 			log_error("1 NOOOOO!!! HORROR!");
@@ -65,12 +65,18 @@ void receive_file(connection *conn, packet_read_write *first_packet) {
 			log_error("2 NOOOOO!!! HORROR!");
 			exit(-1);
 		}
+		log_info("putaa1");
 		if(recv_packet(conn, recv_buff, recv_bufflen) == -1) {
 			log_error("3 NOOOOO!!! HORROR!");
 			exit(-1);
 		}
+		log_info("putaa2");
 		if(buff_to_packet_data(recv_buff, recv_bufflen, &data) == -1) {
 			log_error("4 NOOOOO!!! HORROR!");
+			exit(-1);
+		}
+		if(data->block != ack.block + 1) {
+			log_error("ARGGG!");
 			exit(-1);
 		}
 		bytes_minus = chars_to_mode(first_packet, data->data);
@@ -82,5 +88,6 @@ void receive_file(connection *conn, packet_read_write *first_packet) {
 		datalen = recv_bufflen - 4;
 		write_bytes(first_packet->filename, filepos, data->data, datalen);
 		filepos += datalen;
+		ack.block++;
 	} while(1);
 }

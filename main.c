@@ -12,7 +12,7 @@
 #include "tftp_management.h"
 #include "tftp_net.h"
 
-#define DEFAULT_PORT	4000
+#define DEFAULT_PORT	69
 
 void sig_term() {
 }
