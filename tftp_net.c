@@ -6,7 +6,7 @@
 #include <unistd.h>
 
 
-int16_t open_common(connection *conn, int port) {
+int16_t open_common(connection *conn, unsigned short port) {
 	int socketfd;
 	
 	socketfd = socket(AF_INET, SOCK_DGRAM, 0);
@@ -22,7 +22,7 @@ int16_t open_common(connection *conn, int port) {
 	return 0;
 }
 
-int16_t open_server_conn(connection *conn, int port) {
+int16_t open_server_conn(connection *conn, unsigned short port) {
 	int res;
 	
 	res = open_common(conn, port);
@@ -38,7 +38,7 @@ int16_t open_server_conn(connection *conn, int port) {
 	return 0;
 }
 
-int16_t open_client_conn(connection *conn, struct in_addr *serv_address, int port) {
+int16_t open_client_conn(connection *conn, struct in_addr *serv_address, unsigned short port) {
 	if(open_common(conn, port) == -1) {
 		return -1;
 	}
@@ -65,7 +65,7 @@ int16_t recv_packet(connection *conn, char *packet, int maxlen) {
 	
 	numRecv = recvfrom(conn->socket, packet, maxlen, 0, (struct sockaddr *) &conn->address, &conn->address_len);
 	if(numRecv == -1) {
-		log_error("error reveiving data");
+		log_error("error receiving data");
 		return -1;
 	}
 	return numRecv;

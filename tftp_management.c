@@ -6,13 +6,27 @@
 #include "tftp_net.h"
 #include "tftp_io.h"
 
+void send_ack(connection *conn, packet_ack *ack) {
+	char *send_buff;
+	int16_t send_bufflen;
+	
+	send_bufflen = packet_ack_to_bytes(&send_buff, ack);
+	if(send_bufflen == -1) {
+		log_error("1 NOOOOO!!! HORROR!");
+		exit(-1);
+	}
+	if(send_packet(conn, send_buff, send_bufflen) == -1) {
+		log_error("2 NOOOOO!!! HORROR!");
+		exit(-1);
+	}
+}
+
 void dispatch_request(char *packet, uint16_t len, connection *parent_conn) {
 	int16_t error;
 	packet_type type;
 	packet_read_write first_packet;
 	connection conn;
-	struct in_addr client;
-	int port = parent_conn->address.sin_port;
+	unsigned short port = ntohs(parent_conn->address.sin_port);
 	
 	error = guess_packet_type(packet, len, &type);
 	if(error == -1) {
@@ -22,9 +36,8 @@ void dispatch_request(char *packet, uint16_t len, connection *parent_conn) {
 	if(error == -1) {
 		return;
 	}
-	client = parent_conn->address.sin_addr;
 	log_info("Opening connection to client from new child procces (forked)");
-	error = open_client_conn(&conn, &client, port);
+	error = open_client_conn(&conn, &parent_conn->address.sin_addr, port);
 	if(error == -1) {
 		return;
 	}
@@ -47,30 +60,20 @@ void send_file(connection *conn, packet_read_write *packet) {
 void receive_file(connection *conn, packet_read_write *first_packet) {
 	packet_ack ack;
 	packet_data *data;
-	char *send_buff, *recv_buff;
+	char *recv_buff;
 	off_t filepos;
-	int16_t send_bufflen, recv_bufflen, bytes_minus, datalen;
+	int16_t recv_bufflen, bytes_minus, datalen;
 	
 	log_info("Receiving file!! uee");
 	filepos = 0;
 	ack.op = ACK;
 	ack.block = 0;
+	send_ack(conn, &ack);
 	do {
-		send_bufflen = packet_ack_to_bytes(&send_buff, &ack);
-		if(send_bufflen == -1) {
-			log_error("1 NOOOOO!!! HORROR!");
-			exit(-1);
-		}
-		if(send_packet(conn, send_buff, send_bufflen) == -1) {
-			log_error("2 NOOOOO!!! HORROR!");
-			exit(-1);
-		}
-		log_info("putaa1");
-		if(recv_packet(conn, recv_buff, recv_bufflen) == -1) {
+		if((recv_bufflen = recv_packet(conn, recv_buff, MAX_PACKET_SIZE)) == -1) {
 			log_error("3 NOOOOO!!! HORROR!");
 			exit(-1);
 		}
-		log_info("putaa2");
 		if(buff_to_packet_data(recv_buff, recv_bufflen, &data) == -1) {
 			log_error("4 NOOOOO!!! HORROR!");
 			exit(-1);
@@ -89,5 +92,6 @@ void receive_file(connection *conn, packet_read_write *first_packet) {
 		write_bytes(first_packet->filename, filepos, data->data, datalen);
 		filepos += datalen;
 		ack.block++;
+		send_ack(conn, &ack);
 	} while(1);
 }
