@@ -9,6 +9,7 @@
 void send_ack(connection *conn, packet_ack *ack) {
 	char *send_buff;
 	int16_t send_bufflen;
+	packet_ack *ack_tmp;
 	
 	send_bufflen = packet_ack_to_bytes(&send_buff, ack);
 	if(send_bufflen == -1) {
@@ -19,6 +20,8 @@ void send_ack(connection *conn, packet_ack *ack) {
 		log_error("2 NOOOOO!!! HORROR!");
 		exit(-1);
 	}
+	/* Llamamos a la función buff_to_packet_ack para reordenar los bytes en el orden correcto para la arquitectura (ntohs) */
+	buff_to_packet_ack(send_buff, send_bufflen, &ack_tmp);
 }
 
 void dispatch_request(char *packet, uint16_t len, connection *parent_conn) {
@@ -26,7 +29,7 @@ void dispatch_request(char *packet, uint16_t len, connection *parent_conn) {
 	packet_type type;
 	packet_read_write first_packet;
 	connection conn;
-	unsigned short port = ntohs(parent_conn->address.sin_port);
+	unsigned short port = ntohs(parent_conn->remote_address.sin_port);
 	
 	error = guess_packet_type(packet, len, &type);
 	if(error == -1) {
@@ -37,7 +40,7 @@ void dispatch_request(char *packet, uint16_t len, connection *parent_conn) {
 		return;
 	}
 	log_info("Opening connection to client from new child procces (forked)");
-	error = open_client_conn(&conn, &parent_conn->address.sin_addr, port);
+	error = open_client_conn(&conn, &parent_conn->remote_address, port);
 	if(error == -1) {
 		return;
 	}
@@ -68,12 +71,14 @@ void receive_file(connection *conn, packet_read_write *first_packet) {
 	filepos = 0;
 	ack.op = ACK;
 	ack.block = 0;
+		printf("<<%d>>\n", conn->socket);
 	send_ack(conn, &ack);
 	do {
 		if((recv_bufflen = recv_packet(conn, recv_buff, MAX_PACKET_SIZE)) == -1) {
 			log_error("3 NOOOOO!!! HORROR!");
 			exit(-1);
 		}
+		printf("--%d--\n", conn->socket);
 		if(buff_to_packet_data(recv_buff, recv_bufflen, &data) == -1) {
 			log_error("4 NOOOOO!!! HORROR!");
 			exit(-1);

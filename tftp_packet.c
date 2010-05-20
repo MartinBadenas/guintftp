@@ -8,7 +8,6 @@
 /* Devuelve el tipo de paquete del array */
 int16_t guess_packet_type(char *buff, uint16_t bufflen, packet_type *type) {
 	if(bufflen < 2) {
-		printf("<%d>\n", bufflen);
 		log_error("Invalid buffer (guess_packet_type)!");
 		return -1;
 	}

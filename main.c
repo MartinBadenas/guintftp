@@ -6,6 +6,7 @@
 #include <sys/wait.h>
 #include <sys/types.h>
 #include <signal.h>
+#include <arpa/inet.h>
 #include <unistd.h>
 #include "tftp_log.h"
 #include "tftp_packet.h"
@@ -37,6 +38,7 @@ int main(int argc, char *argv[]) {
 	while(1) {
 		log_info("Waiting for connection..");
 		packet_len = recv_packet(&conn, first_packet, MAX_PACKET_SIZE);
+		printf("main port: %d", ntohs(conn.remote_address.sin_port));
 		log_info("New connection!!");
 		if(packet_len == -1) {
 			return -1;
@@ -47,6 +49,7 @@ int main(int argc, char *argv[]) {
 			return -1;
 		}
 		if(pid == 0) {
+			printf("forked!! remote_address: %s\n", inet_ntoa(conn.remote_address.sin_addr));
 			dispatch_request(first_packet, packet_len, &conn);
 			return 0;
 		}

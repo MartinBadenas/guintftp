@@ -9,6 +9,8 @@ typedef struct {
 	packet_mode mode;
 	struct sockaddr_in address;
 	unsigned int address_len;
+	struct sockaddr_in remote_address;
+	unsigned int remote_address_len;
 } connection;
 
 void dispatch_request(char *paquet, uint16_t len, connection *parent_conn);
