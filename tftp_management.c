@@ -106,6 +106,9 @@ int16_t receive_file(connection *conn, packet_read_write *first_packet) {
 		if((recv_bufflen = recv_packet(conn, recv_buff, MAX_PACKET_SIZE)) == -1) {
 			return -1;
 		}
+		if(recv_bufflen == -2) {
+			/* TODO: The two chosen TID's are then used for the remainder of the transfer. */
+		}
 		if(buff_to_packet_data(recv_buff, recv_bufflen, &data) == -1) {
 			return -1;
 		}

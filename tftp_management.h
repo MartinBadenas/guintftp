@@ -10,9 +10,11 @@ typedef struct {
 	int socket;
 	packet_mode mode;
 	struct sockaddr_in address;
-	unsigned int address_len;
+	socklen_t address_len;
 	struct sockaddr_in remote_address;
-	unsigned int remote_address_len;
+	socklen_t remote_address_len;
+	struct sockaddr_in dummy_address;
+	socklen_t dummy_address_len;
 } connection;
 
 int16_t new_connection(configuration *conf, char *packet, uint16_t len, connection *parent_conn);

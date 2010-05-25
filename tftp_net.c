@@ -19,8 +19,10 @@ int16_t open_common(connection *conn, unsigned short port) {
 	conn->socket = socketfd;
 	conn->address_len = sizeof(conn->address);
 	conn->remote_address_len = sizeof(conn->remote_address);
+	conn->dummy_address_len = sizeof(conn->dummy_address);
 	memset(&conn->address, 0, conn->address_len);
 	memset(&conn->remote_address, 0, conn->remote_address_len);
+	memset(&conn->dummy_address, 0, conn->dummy_address_len);
 	conn->address.sin_family = AF_INET;
 	conn->address.sin_port = htons(port);
 	return 0;
@@ -70,14 +72,18 @@ int16_t send_packet(connection *conn, char *packet, int len) {
 }
 int16_t recv_packet(connection *conn, char *packet, int maxlen) {
 	ssize_t numRecv;
-	char *ip;
+	struct sockaddr_in ip;
+	socklen_t len;
 	
-	numRecv = recvfrom(conn->socket, packet, maxlen, 0, (struct sockaddr *) &conn->remote_address, &conn->remote_address_len);
-	ip = inet_ntoa(conn->remote_address.sin_addr);
-	printf("recv_packet remote_address: %s\n", ip);
+	numRecv = recvfrom(conn->socket, packet, maxlen, 0, (struct sockaddr *) &ip, &len);
+	syslog(LOG_DEBUG, "recv_packet remote_address: %s", inet_ntoa(conn->remote_address.sin_addr));
 	if(numRecv == -1) {
 		syslog(LOG_ERR, "error receiving data");
 		return -1;
+	}
+	if((len != conn->remote_address_len || memcmp(ip, conn->remote_address, len) != 0) &&
+		(len != conn->dummy_address_len || memcmp(ip, conn->dummy_address, len) != 0)) {
+		return -2;
 	}
 	return numRecv;
 }

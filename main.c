@@ -78,7 +78,7 @@ int main(int argc, char *argv[]) {
 	while(1) {
 		syslog(LOG_NOTICE, "Waiting for connection on port <%d>...", config.port);
 		packet_len = recv_packet(&conn, first_packet, MAX_PACKET_SIZE);
-		if(packet_len == -1 || new_connection(&config, first_packet, packet_len, &conn) == -1) {
+		if(packet_len != 0 || new_connection(&config, first_packet, packet_len, &conn) == -1) {
 			syslog(LOG_CRIT, "Coudn't create new connection!");
 		}
 	}
