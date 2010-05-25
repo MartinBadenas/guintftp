@@ -2,6 +2,7 @@
 #define TFTP_MODE_H_
 
 #include <stdint.h>
+
 #include "tftp_packet.h"
 
 typedef enum {

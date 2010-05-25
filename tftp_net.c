@@ -1,5 +1,3 @@
-#include "tftp_net.h"
-#include "tftp_log.h"
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
@@ -7,6 +5,8 @@
 #include <unistd.h>
 #include <stdio.h>
 
+#include "tftp_net.h"
+#include "tftp_log.h"
 
 int16_t open_common(connection *conn, unsigned short port) {
 	int socketfd;
@@ -18,7 +18,7 @@ int16_t open_common(connection *conn, unsigned short port) {
 	}
 	conn->socket = socketfd;
 	conn->address_len = sizeof(conn->address);
-	conn->remote_address_len = sizeof(conn->remote_address_len);
+	conn->remote_address_len = sizeof(conn->remote_address);
 	memset(&conn->address, 0, conn->address_len);
 	memset(&conn->remote_address, 0, conn->remote_address_len);
 	conn->address.sin_family = AF_INET;
@@ -70,11 +70,9 @@ int16_t send_packet(connection *conn, char *packet, int len) {
 }
 int16_t recv_packet(connection *conn, char *packet, int maxlen) {
 	ssize_t numRecv;
-	struct sockaddr *addr;
 	char *ip;
 	
-	addr = (struct sockaddr *) &conn->remote_address;
-	numRecv = recvfrom(conn->socket, packet, maxlen, 0, addr, &conn->remote_address_len);
+	numRecv = recvfrom(conn->socket, packet, maxlen, 0, (struct sockaddr *) &conn->remote_address, &conn->remote_address_len);
 	ip = inet_ntoa(conn->remote_address.sin_addr);
 	printf("recv_packet remote_address: %s\n", ip);
 	if(numRecv == -1) {

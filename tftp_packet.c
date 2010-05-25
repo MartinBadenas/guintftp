@@ -1,9 +1,10 @@
-#include "tftp_packet.h"
-#include "tftp_log.h"
 #include <string.h>
 #include <netinet/in.h>
 #include <stdio.h>
 #include <ctype.h>
+
+#include "tftp_packet.h"
+#include "tftp_log.h"
 
 /* Devuelve el tipo de paquete del array */
 int16_t guess_packet_type(char *buff, uint16_t bufflen, packet_type *type) {

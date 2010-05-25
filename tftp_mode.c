@@ -1,5 +1,6 @@
-#include "tftp_mode.h"
 #include <string.h>
+
+#include "tftp_mode.h"
 #include "tftp_log.h"
 
 int16_t mode_to_chars(packet_read_write *reference, char *text) {
