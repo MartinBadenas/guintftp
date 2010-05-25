@@ -19,10 +19,18 @@
 connection conn;
 
 void sig_term() {
-	syslog(LOG_INFO, "TERM signal received");
+	int status;
+
+	syslog(LOG_NOTICE, "TERM signal received, waiting for children to die...");
 	close_conn(&conn);
+	if(num_pids > 0) {
+		while(num_pids != 0) {
+			wait(-1, &status, 0);
+		}
+	}
+	syslog(LOG_NOTICE, "Goodbye!!!");
 	closelog();
-	exit(0);
+	exit(EXIT_SUCCESS);
 }
 
 int main(int argc, char *argv[]) {
@@ -74,9 +82,5 @@ int main(int argc, char *argv[]) {
 			syslog(LOG_CRIT, "Coudn't create new connection!");
 		}
 	}
-	/*
-	We do this on SIGTERM handler:
-	close_conn(&conn);
-	*/
 	return EXIT_SUCCESS;
 }

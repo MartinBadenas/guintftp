@@ -80,47 +80,58 @@ void dispatch_request(char *packet, uint16_t len, connection *parent_conn) {
 	close_conn(&conn);
 	log_info("Work done, bye!");
 }
-void send_file(connection *conn, packet_read_write *packet) {
+int16_t send_file(connection *conn, packet_read_write *packet) {
 }
-void receive_file(connection *conn, packet_read_write *first_packet) {
+int16_t receive_file(connection *conn, packet_read_write *first_packet) {
 	packet_ack ack;
 	packet_data *data;
+	packet_error error;
 	char recv_buff[MAX_PACKET_SIZE];
 	off_t filepos;
 	int16_t recv_bufflen, bytes_minus, datalen;
 	
 	log_info("Receiving file!!");
+	if(access(first_packet->filename, F_OK) == 0) {
+		syslog(LOG_ERR, "<%s> file already exists", first_packet->filename);
+		error.op = ERROR;
+		error.error_code = ERROR_FILE_NOT_FOUND;
+		send_error(conn, &error);
+		return -1;
+	}
 	filepos = 0;
 	ack.op = ACK;
 	ack.block = 0;
 	send_ack(conn, &ack);
 	do {
 		if((recv_bufflen = recv_packet(conn, recv_buff, MAX_PACKET_SIZE)) == -1) {
-			log_error("3 NOOOOO!!! HORROR!");
-			exit(-1);
+			return -1;
 		}
 		if(buff_to_packet_data(recv_buff, recv_bufflen, &data) == -1) {
-			log_error("4 NOOOOO!!! HORROR!");
-			exit(-1);
+			return -1;
 		}
 		if(data->block != ack.block + 1) {
-			log_error("ARGGG!");
-			exit(-1);
+			syslog(LOG_ERR, "Packet block is not correct, should be <%d> and is <%d>", ack.block + 1, data->block);
+			return -1;
 		}
 		bytes_minus = chars_to_mode(first_packet, data->data);
 		if(bytes_minus == -1) {
-			log_error("5 NOOOOO!!! HORROR!");
-			exit(-1);
+			return -1;
 		}
 		datalen = recv_bufflen - bytes_minus - 4;
+		/* datalen == 0 is only allowed as last packet */
+		if(datalen == 0 && data->block == 1) {
+			syslog(LOG_ERR, "datalen == 0 and block == 1, datalen == 1 is only allowed as last packet");
+			return -1;
+		}
 		if(write_bytes(first_packet->filename, filepos, data->data, datalen) == -1) {
-			log_error("6 NOOOOO!!! HORROR!");
-			exit(-1);
+			return -1;
 		}
 		filepos += datalen;
 		ack.block++;
 		send_ack(conn, &ack);
 	} while(recv_bufflen == MAX_PACKET_SIZE);
+
+	return 0;
 }
 
 int num_pids = 0;
@@ -148,10 +159,6 @@ int16_t new_connection(configuration *conf, char *packet, uint16_t len, connecti
 }
 
 void sig_chld() {
-	if(wait(NULL) > 0) {
-		log_info("Child terminated :)");
-		num_pids--;
-	} else {
-		log_info("Child terminated but something went wrong :(");
-	}
+	syslog(LOG_NOTICE, "Child terminated :)");
+	num_pids--;
 }
