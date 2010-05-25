@@ -5,6 +5,7 @@
 #include <pwd.h>
 #include <stdio.h>
 #include <grp.h>
+#include <syslog.h>
 
 #include "tftp_configuration.h"
 #include "tftp_io.h"
@@ -26,7 +27,7 @@ int load_config(configuration *config) {
 	}
 	len = read_bytes(CONFIGURATION_FILE, 0, buff, BUFFER_LEN);
 	if(len == -1) {
-		log_error("Couldn't read configuration file!");
+		syslog(LOG_WARNING, "Couldn't read configuration file!");
 		return -1;
 	}
 	for(i = 0; i < len; i++) {
@@ -57,33 +58,33 @@ int apply_config(configuration *config) {
 	struct passwd *userent = NULL;
 
 	if(geteuid() != 0) {
-		log_error("this process should be running as root!!");
+		syslog(LOG_EMERG, "this process should be running as root!!");
 		return -1;
 	}
 	if((config->user_name != NULL) && ((userent = getpwnam(config->user_name)) == NULL)) {
-		log_error("User not found!");
+		syslog(LOG_EMERG, "User not found!");
 		return -1;
 	}
 
 	if(config->root_dir == NULL || access(config->root_dir, F_OK) == -1) {
-		log_error("Root directory not defined or not found!");
+		syslog(LOG_EMERG, "Root directory not defined or not found!");
 		return -1;
 	}
 	if(chdir(config->root_dir) == -1 || chroot(config->root_dir) == -1) {
-		log_error("chdir or chroot failed!!");
+		syslog(LOG_EMERG, "chdir or chroot failed!!");
 		return -1;
 	}
 	if(userent != NULL) {
 		if(setegid(userent->pw_gid) == -1) {
-			log_error("setegid failed!!");
+			syslog(LOG_EMERG, "setegid failed!!");
 			return -1;
 		}
 		if(initgroups(config->user_name, userent->pw_gid) == -1) {
-			log_error("initgroups failed!!");
+			syslog(LOG_EMERG, "initgroups failed!!");
 			return -1;
 		}
 		if(seteuid(userent->pw_uid) == -1) {
-			log_error("seteuid failed!!");
+			syslog(LOG_EMERG, "seteuid failed!!");
 			return -1;
 		}
 	}

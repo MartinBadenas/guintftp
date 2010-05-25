@@ -27,12 +27,12 @@ int open_lseek(const char *filename, off_t desiredpos, int flags, mode_t mode) {
 		fd = open(filename, flags, mode);
 	}
 	if(fd == -1) {
-		log_error("Failed opening file!");
+		syslog(LOG_CRIT, "Failed opening file!");
 		return -1;
 	}
 	pos = lseek(fd, desiredpos, SEEK_SET);
 	if(pos == -1 || pos != desiredpos) {
-		log_error("lseek error");
+		syslog(LOG_CRIT, "lseek error");
 		return -1;
 	}
 	return fd;
@@ -52,7 +52,7 @@ int16_t read_bytes(const char *filename, off_t desiredpos, char *buff, uint16_t 
 	}
 	
 	if(num_bytes == -1) {
-		log_error("Failed reading file");
+		syslog(LOG_ALERT, "Failed reading file");
 		return -1;
 	}
 	if(close_file(fd) == -1)
@@ -80,7 +80,7 @@ int16_t write_bytes(const char *filename, off_t desiredpos, const char *buff, ui
 	}
 	
 	if(error == -1) {
-		log_error("Failed writing file");
+		syslog(LOG_ALERT, "Failed writing file");
 		return -1;
 	}
 	

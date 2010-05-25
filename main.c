@@ -19,7 +19,7 @@
 connection conn;
 
 void sig_term() {
-	log_info("TERM signal received");
+	syslog(LOG_INFO, "TERM signal received");
 	close_conn(&conn);
 	closelog();
 	exit(0);

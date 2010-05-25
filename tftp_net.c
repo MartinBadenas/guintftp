@@ -4,16 +4,16 @@
 #include <string.h>
 #include <unistd.h>
 #include <stdio.h>
+#include <syslog.h>
 
 #include "tftp_net.h"
-#include "tftp_log.h"
 
 int16_t open_common(connection *conn, unsigned short port) {
 	int socketfd;
 	
 	socketfd = socket(AF_INET, SOCK_DGRAM, 0);
 	if(socketfd == -1) {
-		log_error("error opening socket");
+		syslog(LOG_ERR, "error opening socket");
 		return -1;
 	}
 	conn->socket = socketfd;
@@ -35,7 +35,7 @@ int16_t open_server_conn(connection *conn, unsigned short port) {
 		return -1;
 	}
 	if(bind(conn->socket, (struct sockaddr *)&conn->address, conn->address_len) == -1) {
-		log_error("error binding connection");
+		syslog(LOG_ERR, "error binding connection");
 		return -1;
 	}
 	
@@ -62,7 +62,7 @@ int16_t send_packet(connection *conn, char *packet, int len) {
 	printf("send_packet port: %d", ntohs(conn->remote_address.sin_port));
 	numSent = sendto(conn->socket, packet, len, 0, (struct sockaddr *) &conn->remote_address, conn->remote_address_len);
 	if(numSent == -1) {
-		log_error("error sending data");
+		syslog(LOG_ERR, "error sending data");
 		return -1;
 	}
 	
@@ -76,7 +76,7 @@ int16_t recv_packet(connection *conn, char *packet, int maxlen) {
 	ip = inet_ntoa(conn->remote_address.sin_addr);
 	printf("recv_packet remote_address: %s\n", ip);
 	if(numRecv == -1) {
-		log_error("error receiving data");
+		syslog(LOG_ERR, "error receiving data");
 		return -1;
 	}
 	return numRecv;

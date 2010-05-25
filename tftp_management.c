@@ -3,6 +3,7 @@
 #include <sys/wait.h>
 #include <unistd.h>
 #include <arpa/inet.h>
+#include <syslog.h>
 
 #include "tftp_management.h"
 #include "tftp_packet.h"

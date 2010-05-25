@@ -1,7 +1,7 @@
 #include <string.h>
+#include <syslog.h>
 
 #include "tftp_mode.h"
-#include "tftp_log.h"
 
 int16_t mode_to_chars(packet_read_write *reference, char *text) {
 /* return negative number to error.
@@ -38,14 +38,14 @@ int16_t move_right_insert(int16_t position, char charAdd, char *text) {
 	int16_t max, pos;
 	
 	if(position < 0) {
-		log_error("Incorrect position, not negative");
+		syslog(LOG_WARNING, "Incorrect position, not negative");
 		return -1;
 	}
 	
 	max = strlen(text);
 	
 	if(position >= max) {
-		log_error("Incorrect position, to long");
+		syslog(LOG_WARNING, "Incorrect position, to long");
 		return -1;
 	}
 	
@@ -61,14 +61,14 @@ int16_t move_right_put_after(int16_t position, char charAdd, char *text) {
 	int16_t max, pos;
 	
 	if(position < 0) {
-		log_error("Incorrect position, not negative");
+		syslog(LOG_WARNING, "Incorrect position, not negative");
 		return -1;
 	}
 	
 	max = strlen(text);
 	
 	if(position >= max) {
-		log_error("Incorrect position, to long");
+		syslog(LOG_WARNING, "Incorrect position, to long");
 		return -1;
 	}
 	
@@ -110,14 +110,14 @@ int16_t delete_character(int16_t position, char *text) {
 	int16_t max;
 	
 	if(position < 0) {
-		log_error("Incorrect position, not negative");
+		syslog(LOG_WARNING, "Incorrect position, not negative");
 		return -1;
 	}
 	
 	max = strlen(text);
 	
 	if(position >= max) {
-		log_error("Incorrect position, to long");
+		syslog(LOG_WARNING, "Incorrect position, to long");
 		return -1;
 	}
 	
