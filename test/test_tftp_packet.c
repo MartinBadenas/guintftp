@@ -7,7 +7,6 @@
 #include <ctype.h>
 
 #include "../tftp_packet.h"
-#include "../tftp_log.h"
 
 void test_guess_packet_type() {
 	packet_type type;

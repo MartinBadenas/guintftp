@@ -5,7 +5,6 @@
 #include "test_tftp_io.h"
 #include "../tftp_io.h"
 #include "../tftp_packet.h"
-#include "../tftp_log.h"
 
 void test_read_block() {
 	char bytes[15360];

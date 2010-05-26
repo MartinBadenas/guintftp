@@ -2,9 +2,10 @@
 #include <netinet/in.h>
 #include <stdio.h>
 #include <ctype.h>
+#include <string.h>
+#include <syslog.h>
 
 #include "tftp_packet.h"
-#include "syslog.h"
 
 /* Devuelve el tipo de paquete del array */
 int16_t guess_packet_type(char *buff, uint16_t bufflen, packet_type *type) {
@@ -176,17 +177,25 @@ int16_t packet_ack_to_bytes(char **buffer, packet_ack *packet) {
 
 /* Crea un array de chars a partir de un packet_error */
 int16_t packet_error_to_bytes(char **buffer, packet_error *packet) {
-	int len;
+	uint16_t len, defaultstrlen;
+	char *defaultstring;
 	
 	if(ERROR != packet->op) {
 		syslog(LOG_ERR, "invalid packet type");
 		return -1;
 	}
+	/* Checking that error code is valid */
 	if(packet->error_code < 0 || packet->error_code > 7) {
 		syslog(LOG_ERR, "Invalid error code!");
 		return -1;
 	}
-	/* TODO: strlen no es seguro */
+	/* if it's not ERROR_CUSTOM then we must copy a default string for that error code */
+	if(0 != packet->error_code) {
+		if(error_code(packet->error_code, &defaultstring, &defaultstrlen) == -1) {
+			return -1;
+		}
+		strcpy(packet->errmsg, defaultstring);
+	}
 	len = 5 + strlen(packet->errmsg);
 	if(len < MIN_ERROR_SIZE) {
 		syslog(LOG_ERR, "Bad error packet");

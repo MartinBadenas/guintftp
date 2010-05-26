@@ -1,7 +1,6 @@
 #include "test_tftp_packet.h"
 #include "test_tftp_io.h"
 #include "test_tftp_mode.h"
-#include "../tftp_log.h"
 
 int main_test() {
 	/* test tftp packet */

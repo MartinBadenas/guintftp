@@ -5,6 +5,7 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <syslog.h>
+#include <errno.h>
 
 #include "tftp_net.h"
 
@@ -20,9 +21,11 @@ int16_t open_common(connection *conn, unsigned short port) {
 	conn->address_len = sizeof(conn->address);
 	conn->remote_address_len = sizeof(conn->remote_address);
 	conn->dummy_address_len = sizeof(conn->dummy_address);
+	conn->last_address_len = sizeof(conn->last_address);
 	memset(&conn->address, 0, conn->address_len);
 	memset(&conn->remote_address, 0, conn->remote_address_len);
 	memset(&conn->dummy_address, 0, conn->dummy_address_len);
+	memset(&conn->last_address, 0, conn->last_address_len);
 	conn->address.sin_family = AF_INET;
 	conn->address.sin_port = htons(port);
 	return 0;
@@ -37,7 +40,7 @@ int16_t open_server_conn(connection *conn, unsigned short port) {
 		return -1;
 	}
 	if(bind(conn->socket, (struct sockaddr *)&conn->address, conn->address_len) == -1) {
-		syslog(LOG_ERR, "error binding connection");
+		syslog(LOG_ERR, "Couldn't bind connection (port %d)", port);
 		return -1;
 	}
 	
@@ -72,17 +75,19 @@ int16_t send_packet(connection *conn, char *packet, int len) {
 }
 int16_t recv_packet(connection *conn, char *packet, int maxlen) {
 	ssize_t numRecv;
-	struct sockaddr_in ip;
-	socklen_t len;
 	
-	numRecv = recvfrom(conn->socket, packet, maxlen, 0, (struct sockaddr *) &ip, &len);
+	/* Copy last address to backup if next connection is from an incorrect ip or port */
+	conn->last_address_len = conn->address_len;
+	conn->last_address = conn->address;
+
+	numRecv = recvfrom(conn->socket, packet, maxlen, 0, (struct sockaddr *) &conn->remote_address, &conn->remote_address_len);
 	syslog(LOG_DEBUG, "recv_packet remote_address: %s", inet_ntoa(conn->remote_address.sin_addr));
 	if(numRecv == -1) {
-		syslog(LOG_ERR, "error receiving data");
+		syslog(LOG_ERR, "Error receiving data (errno: %d)", errno);
 		return -1;
 	}
-	if((len != conn->remote_address_len || memcmp(ip, conn->remote_address, len) != 0) &&
-		(len != conn->dummy_address_len || memcmp(ip, conn->dummy_address, len) != 0)) {
+	if((conn->last_address_len != conn->remote_address_len || (conn->last_address.sin_addr.s_addr == conn->remote_address.sin_addr.s_addr && conn->last_address.sin_port == conn->remote_address.sin_port)) &&
+		(conn->last_address_len != conn->dummy_address_len || (conn->last_address.sin_addr.s_addr == conn->dummy_address.sin_addr.s_addr && conn->last_address.sin_port == conn->dummy_address.sin_port))) {
 		return -2;
 	}
 	return numRecv;

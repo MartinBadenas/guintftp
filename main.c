@@ -8,6 +8,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <syslog.h>
+#include <sys/stat.h>
 
 #include "tftp_packet.h"
 #include "tftp_management.h"
@@ -19,19 +20,15 @@
 connection conn;
 
 void sig_term() {
-	int status;
-
-	syslog(LOG_NOTICE, "TERM signal received, waiting for children to die...");
+	syslog(LOG_NOTICE, "TERM signal received, closing main connection and waiting for children to die...");
 	close_conn(&conn);
-	if(num_pids > 0) {
-		while(num_pids != 0) {
-			wait(-1, &status, 0);
-		}
-	}
+	wait_children_die();
 	syslog(LOG_NOTICE, "Goodbye!!!");
 	closelog();
 	exit(EXIT_SUCCESS);
 }
+#include "tftp_net.h"
+
 
 int main(int argc, char *argv[]) {
 	int16_t error, packet_len;
@@ -53,7 +50,8 @@ int main(int argc, char *argv[]) {
 		return EXIT_FAILURE;
 	}
 	/* open syslog connection! */
-	openlog(PROGRAM_NAME, syslog_options, LOG_DEBUG);
+	openlog(PROGRAM_NAME, syslog_options, LOG_DAEMON);
+	/* TODO: just send LOG_INFO and above */
 	syslog(LOG_NOTICE, "Starting...");
 	syslog(LOG_NOTICE, "Setting signal handlers...");
 	signal(SIGCHLD, sig_chld);
@@ -78,9 +76,11 @@ int main(int argc, char *argv[]) {
 	while(1) {
 		syslog(LOG_NOTICE, "Waiting for connection on port <%d>...", config.port);
 		packet_len = recv_packet(&conn, first_packet, MAX_PACKET_SIZE);
-		if(packet_len != 0 || new_connection(&config, first_packet, packet_len, &conn) == -1) {
-			syslog(LOG_CRIT, "Coudn't create new connection!");
+		if(packet_len != 0) {
+			/* This connection failed, can't send error packet because we don't know client IP:PORT, continue! */
+			continue;
 		}
+		new_connection(&config, first_packet, packet_len, &conn);
 	}
 	return EXIT_SUCCESS;
 }
