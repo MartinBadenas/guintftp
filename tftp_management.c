@@ -6,6 +6,7 @@
 #include <syslog.h>
 #include <string.h>
 #include <errno.h>
+#include <sys/stat.h>
 
 #include "tftp_management.h"
 #include "tftp_packet.h"
@@ -71,12 +72,15 @@ int16_t dispatch_request(connection *conn, char *packet, uint16_t len, connectio
 	}
 	switch(type) {
 	case RRQ:
-		send_file(conn, &first_packet);
-		return -1;
+		if(send_file(conn, &first_packet) == -1) {
+			return -1;
+		}
 		break;
 	case WRQ:
-		receive_file(conn, &first_packet);
-		return -1;
+		if(receive_file(conn, &first_packet) == -1) {
+			/* TODO: remove file if it exists */
+			return -1;
+		}
 		break;
 	default:
 		syslog(LOG_EMERG, "Not valid first packet type, not RRQ or WRQ (shouldn't reach this code)");
@@ -84,7 +88,49 @@ int16_t dispatch_request(connection *conn, char *packet, uint16_t len, connectio
 	}
 	return 0;
 }
-int16_t send_file(connection *conn, packet_read_write *packet) {
+int16_t send_file(connection *conn, packet_read_write *first_packet) {
+	packet_error error;
+	struct stat stat_file;
+
+	error.op = ERROR;
+	if(access(first_packet->filename, R_OK) == -1) {
+		switch(errno) {
+		case ENOENT:
+			syslog(LOG_ERR, "File not found <%s>", first_packet->filename);
+			error.error_code = ERROR_FILE_NOT_FOUND;
+			break;
+		case EACCES:
+		case ELOOP:
+		case ENAMETOOLONG:
+		case ENOTDIR:
+		case EROFS:
+		case EFAULT:
+		case ETXTBSY:
+			syslog(LOG_ERR, "Access violation <%s>", first_packet->filename);
+			error.error_code = ERROR_ACCESS_VIOLATION;
+			break;
+		case EIO:
+		case ENOMEM:
+			syslog(LOG_ALERT, "No resources available! Error when attending request <%s>", first_packet->filename);
+			error.error_code = ERROR_DISK_FULL_OR_ALLOCATION_EXCEEDED;
+		default:
+			syslog(LOG_ALERT, "Unexpected error! Error when attending request <%s>", first_packet->filename);
+			error.error_code = ERROR_CUSTOM;
+			strcpy(error.errmsg, "Internal error");
+		}
+		send_error(conn, &error);
+		return -1;
+	}
+	/* Check whether the file is greater than TFTP protocol can handle */
+	if(stat(first_packet->filename, &stat_file) == -1) {
+		return -1;
+	}
+	/* We can't send files equal or greater than (DATA_SIZE * MAX_BLOCK_SIZE) because block field is an unsigned short,
+	 * if it's exactly (DATA_SIZE * MAX_BLOCK_SIZE) we would need to send another packet without data to close the connection
+	 */
+	if(stat_file.st_size >= DATA_SIZE * MAX_BLOCK_SIZE) {
+		return -1;
+	}
 	return 0;
 }
 int16_t receive_file(connection *conn, packet_read_write *first_packet) {
@@ -97,13 +143,35 @@ int16_t receive_file(connection *conn, packet_read_write *first_packet) {
 	int last_packet = 0;
 
 	error.op = ERROR;
-	syslog(LOG_INFO, "Receiving file <%s>", first_packet->filename);
 	if(access(first_packet->filename, F_OK) == 0) {
-		syslog(LOG_ERR, "<%s> file already exists", first_packet->filename);
+		syslog(LOG_ERR, "File already exists <%s> ", first_packet->filename);
 		error.error_code = ERROR_ALREADY_EXISTS;
 		send_error(conn, &error);
 		return -1;
+	} else if(errno != ENOENT) {
+		switch(errno) {
+		case EACCES:
+		case ELOOP:
+		case ENAMETOOLONG:
+		case ENOTDIR:
+		case EROFS:
+		case EFAULT:
+		case ETXTBSY:
+			syslog(LOG_ERR, "Access violation <%s>", first_packet->filename);
+			error.error_code = ERROR_ACCESS_VIOLATION;
+			break;
+		case EIO:
+		case ENOMEM:
+			syslog(LOG_ALERT, "No resources available! Error when attending request <%s>", first_packet->filename);
+			error.error_code = ERROR_DISK_FULL_OR_ALLOCATION_EXCEEDED;
+		default:
+			syslog(LOG_ALERT, "Unexpected error! Error when attending request <%s>", first_packet->filename);
+			error.error_code = ERROR_CUSTOM;
+			strcpy(error.errmsg, "Internal error");
+		}
+		send_error(conn, &error);
 	}
+	syslog(LOG_INFO, "Receiving file <%s>", first_packet->filename);
 	filepos = 0;
 	ack.op = ACK;
 	ack.block = 0;

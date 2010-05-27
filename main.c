@@ -43,6 +43,10 @@ int main(int argc, char *argv[]) {
 	 */
 	int syslog_options = LOG_PID | LOG_NDELAY;
 	
+	if(geteuid() != 0) {
+		fprintf(stderr, "Must run as root\n");
+		return -1;
+	}
 	/* This created a fork and calls setsid (so the child won't die) and kills main process */
 	if(daemon(0, 0) == -1) {
 		/* This error cannot be logged, syslog is still not opened */
