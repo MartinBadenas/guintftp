@@ -12,6 +12,8 @@
 #include "tftp_net.h"
 #include "tftp_io.h"
 
+#define PID_FILE "/var/run/guintftp.pid"
+
 int16_t send_error(connection *conn, packet_error *error) {
 	char *send_buff;
 	int16_t send_bufflen;
@@ -83,6 +85,7 @@ int16_t dispatch_request(connection *conn, char *packet, uint16_t len, connectio
 	return 0;
 }
 int16_t send_file(connection *conn, packet_read_write *packet) {
+	return 0;
 }
 int16_t receive_file(connection *conn, packet_read_write *first_packet) {
 	packet_ack ack;
@@ -218,6 +221,21 @@ int16_t new_connection(configuration *conf, char *packet, uint16_t len, connecti
 		exit(res);
 	} else {
 		num_pids++;
+	}
+	return 0;
+}
+
+int16_t write_pid() {
+	pid_t pid;
+	char strpid[255];
+
+	/* We need to write the pid to a pid file, so the init.d script can read it */
+	pid = getpid();
+	/* Convert pid to ascii */
+	sprintf(strpid, "%d", pid);
+	if(write_bytes(PID_FILE, 0, strpid, strlen(strpid)) == -1) {
+		syslog(LOG_EMERG, "Couldn't create pid file");
+		return -1;
 	}
 	return 0;
 }

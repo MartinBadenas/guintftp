@@ -51,6 +51,10 @@ int main(int argc, char *argv[]) {
 	}
 	/* open syslog connection! */
 	openlog(PROGRAM_NAME, syslog_options, LOG_DAEMON);
+	/* Let's create pid file */
+	if(write_pid() == -1) {
+		return EXIT_FAILURE;
+	}
 	/* TODO: just send LOG_INFO and above */
 	syslog(LOG_NOTICE, "Starting...");
 	syslog(LOG_NOTICE, "Setting signal handlers...");
@@ -82,5 +86,6 @@ int main(int argc, char *argv[]) {
 		}
 		new_connection(&config, first_packet, packet_len, &conn);
 	}
-	return EXIT_SUCCESS;
+	/* Must not reach this code, it's a failure! (EXIT_FAILURE) */
+	return EXIT_FAILURE;
 }

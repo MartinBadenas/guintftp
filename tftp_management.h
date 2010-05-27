@@ -24,6 +24,7 @@ int16_t dispatch_request(connection *conn, char *paquet, uint16_t len, connectio
 int16_t send_file(connection *conn, packet_read_write *paquet);
 int16_t receive_file(connection *conn, packet_read_write *paquet);
 int16_t send_error(connection *conn, packet_error *error);
+int16_t write_pid();
 void sig_chld();
 void wait_children_die();
 
