@@ -23,7 +23,7 @@
 
 #include "tftp_mode.h"
 
-int16_t mode_to_chars(packet_read_write *reference, char *text) {
+int16_t mode_to_chars(packet_read_write *reference, char *text, int16_t textlen) {
 /* return negative number to error.
  * return 0 to nothing changes
  * return positive number if any chars are lose*/
@@ -31,7 +31,7 @@ int16_t mode_to_chars(packet_read_write *reference, char *text) {
 	i = 0;
 	result = 0;
 	if(strncmp(reference->mode, "netascii", 8)==0) {
-		while(i < strlen(text) && i < DATA_SIZE) {
+		while(i < textlen) {
 			if(text[i] == '\n') {
 				if(i == 0) {
 					move_right_insert(i, '\r', text);
@@ -101,7 +101,7 @@ int16_t move_right_put_after(int16_t position, char charAdd, char *text) {
 	text[position] = charAdd;
 	return 0;
 }
-int16_t chars_to_mode(packet_read_write *reference, char *text) {
+int16_t chars_to_mode(packet_read_write *reference, char *text, int16_t textlen) {
 /* return 0 to nothing changes
  * return negative to error
  * return positive if a change was made */
@@ -110,7 +110,7 @@ int16_t chars_to_mode(packet_read_write *reference, char *text) {
 	if(strncmp(reference->mode, "netascii", 8)==0) {
 		i = 1;
 		/*si encuentra \r\n o \n\r se quita la \r*/
-		while(i < strlen(text) && i < DATA_SIZE) {
+		while(i < textlen) {
 				if(text[i - 1] == '\r' && text[i] == '\n') {
 					delete_character(i - 1, text);
 					result++;

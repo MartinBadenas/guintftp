@@ -225,11 +225,11 @@ int16_t receive_file(connection *conn, packet_read_write *first_packet) {
 			send_error(conn, &error);
 			return -1;
 		}
-		bytes_minus = chars_to_mode(first_packet, data->data);
+		bytes_minus = chars_to_mode(first_packet, data->data, sizeof(data->data));
 		if(bytes_minus == -1) {
 			error.error_code = ERROR_CUSTOM;
 			/* TODO: ????? */
-			strcpy(error.errmsg, "Bad encoded netascii?");
+			strcpy(error.errmsg, "Bad encoded netascii");
 			send_error(conn, &error);
 			return -1;
 		}

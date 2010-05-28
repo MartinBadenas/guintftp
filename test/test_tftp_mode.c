@@ -66,19 +66,19 @@ void test_mode_to_chars() {
 	packet_read_write packet;
 	
 	test_get_packet_read_write(&packet, mode);
-	res = mode_to_chars(&packet, textoorigen);
+	res = mode_to_chars(&packet, textoorigen, sizeof(textoorigen));
 	assert(res == 0);
 	
 	sprintf(mode, "netascii");
 	test_get_packet_read_write(&packet, mode);
-	res = mode_to_chars(&packet, textoorigen);
+	res = mode_to_chars(&packet, textoorigen, sizeof(textoorigen));
 	assert(res == 1);
 	assert(strcmp(textoorigen, textofinal) == 0);
 	
 	sprintf(textoorigen, "texto que solo tiene \\r\r y que se cambia por \\r\\n");
 	sprintf(textofinal, "texto que solo tiene \\r\r\n y que se cambia por \\r\\");
 	test_get_packet_read_write(&packet, mode);
-	res = mode_to_chars(&packet, textoorigen);
+	res = mode_to_chars(&packet, textoorigen, sizeof(textoorigen));
 	assert(res == 1);
 	assert(strcmp(textoorigen, textofinal) == 0);
 	
@@ -113,12 +113,12 @@ void test_chars_to_mode() {
 	packet_read_write packet;
 	
 	test_get_packet_read_write(&packet, mode);
-	res = chars_to_mode(&packet, textoorigen);
+	res = chars_to_mode(&packet, textoorigen, sizeof(textoorigen));
 	assert(res == 0);
 	
 	sprintf(mode, "netascii");
 	test_get_packet_read_write(&packet, mode);
-	res = chars_to_mode(&packet, textoorigen);
+	res = chars_to_mode(&packet, textoorigen, sizeof(textoorigen));
 	assert(res == 2);
 	assert(strcmp(textoorigen, textofinal) == 0);
 }

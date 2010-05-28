@@ -21,6 +21,7 @@
 #include "test_tftp_packet.h"
 #include "test_tftp_io.h"
 #include "test_tftp_mode.h"
+#include "stdio.h"
 
 int main_test() {
 	/* test tftp packet */
@@ -48,5 +49,7 @@ int main_test() {
 	test_mode_to_chars();
 	test_delete_character();
 	test_chars_to_mode();
+	
+	printf("FIN TEST\n");
 	return 0;
 }
