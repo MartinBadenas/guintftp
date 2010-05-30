@@ -2,6 +2,7 @@ AUTOMAKE_OPTIONS = subdir-objects
 ACLOCAL_AMFLAGS = ${ACLOCAL_FLAGS}
 
 bin_PROGRAMS = guintftp
+bin_SCRIPTS = src/ctl/guintftpctl.py
 guintftp_SOURCES = src/daemon/main.c \
 					src/daemon/tftp_configuration.c src/daemon/tftp_configuration.h \
 					src/daemon/tftp_io.h src/daemon/tftp_io.c \
@@ -10,8 +11,9 @@ guintftp_SOURCES = src/daemon/main.c \
 					src/daemon/tftp_net.c src/daemon/tftp_net.h \
 					src/daemon/tftp_packet.c src/daemon/tftp_packet.h
 
-dist_noinst_SCRIPTS = autogen.sh
+dist_noinst_SCRIPTS = autogen.sh man/genMan.sh
 dist_sysconf_DATA = guintftp.conf
+man_MANS = man/guintftp.8 man/guintftpctl.8
 
 INCLUDES                    = @CHECK_CFLAGS@
 if HAVE_CHECK

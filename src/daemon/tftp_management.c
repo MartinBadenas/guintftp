@@ -27,6 +27,7 @@
 #include <string.h>
 #include <errno.h>
 #include <sys/stat.h>
+#include <string.h>
 
 #include "tftp_management.h"
 #include "tftp_packet.h"

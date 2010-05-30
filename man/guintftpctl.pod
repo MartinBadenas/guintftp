@@ -1,0 +1,52 @@
+=encoding UTF-8
+
+=head1 NAME
+
+	guintftpctl - guintftp server control interface (SysV init script)
+
+=head1 SYNOPSIS
+
+	guintftpctl command
+
+=head1 DESCRIPTION
+
+	guintftpctl takes one argument like start, restart... and translates them into appropriate signals to guintftp daemon
+
+=head1 OPTIONS
+
+=head2 start
+
+Starts tftp daemon. Gives an error if it's already running.
+
+=head2 stop
+
+Stops tftp daemon. Gives an error if it's not running.
+
+=head2 force_stop
+
+Stops tftp daemon sending a KILL signal. Gives an error if it's not running.
+
+=head2 restart
+
+Restarts tftp daemon. If the daemon is not running, it is started.
+
+=head2 status
+
+Displays whether daemon is running and its PID.
+
+=head1 AUTHOR
+
+	Dani Hernández Juárez <dhernandez0@gmail.com>
+	Martin Badenas Beltrán <martin.badenas@gmail.com>
+
+=head1 RETURN VALUE
+	
+	Returns -1 if there was some error, 0 otherwise
+
+=head1 SEE ALSO
+
+	tftp(1), guintftp(8)
+
+=head1 REPORTING BUGS
+
+	Report bugs to <dhernandez0@gmail.com>

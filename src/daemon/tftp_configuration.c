@@ -26,18 +26,24 @@
 #include <stdio.h>
 #include <grp.h>
 #include <syslog.h>
+#include <fcntl.h>
+#include <string.h>
 
 #include "tftp_configuration.h"
 #include "tftp_io.h"
 
 #define DEFAULT_PORT 69
 #define CONFIGURATION_FILE "/usr/local/etc/guintftp.conf"
-#define BUFFER_LEN PATH_MAX+MAX_USERNAME_LENGTH+200
+#define MAXLINE_LEN PATH_MAX+200
+#define NUMBUFF_LEN 10
 
 int load_config(configuration *config) {
 	struct servent *entry;
-	int16_t i, j, buffi, len;
-	char buff[BUFFER_LEN], num_buff[MAX_CONN_STRLEN];
+	int fd, error, newlineindex, i;
+	ssize_t bytes_read, num_bytes;
+	off_t pos;
+	char buff[MAXLINE_LEN], numbuff[NUMBUFF_LEN];
+	char *newline, *tmp;
 
 	entry = getservbyname("tftp", "udp");
 	if(entry == NULL) {
@@ -45,33 +51,105 @@ int load_config(configuration *config) {
 	} else {
 		config->port = ntohs(entry->s_port);
 	}
-	len = read_bytes(CONFIGURATION_FILE, 0, buff, BUFFER_LEN);
-	if(len == -1) {
-		syslog(LOG_WARNING, "Couldn't read configuration file!");
+	fd = open(CONFIGURATION_FILE, O_RDONLY);
+	if(fd == -1) {
+		syslog(LOG_CRIT, "Failed opening file %s", CONFIGURATION_FILE);
 		return -1;
 	}
-	for(i = 0; i < len; i++) {
-		if(buff[i] == '=') {
-			if(i-8 >= 0 && buff[i-8] == 'r') {
-				for(j = 0, buffi = i+1; buffi < len && buff[buffi] != '\n' && j < PATH_MAX-1; j++, buffi++) {
-					config->root_dir[j] = buff[buffi];
+	error = 0;
+	num_bytes = 0;
+	config->max_retry = 3;
+	config->seconds_timeout = 5;
+	config->root_dir[0] = '\0';
+	config->user_name[0] = '\0';
+	config->max_connections = 0;
+	while((bytes_read = read(fd, buff, MAXLINE_LEN-1)) > 0) {
+		buff[bytes_read] = '\0';
+		syslog(LOG_DEBUG, "line: %s", buff);
+		newline = strchr(buff, '\n');
+		if(newline == NULL) {
+			error = 1;
+			break;
+		}
+		newlineindex = newline - buff;
+		buff[newlineindex] = '\0';
+		syslog(LOG_DEBUG, "config line: %s", buff);
+
+		tmp = strstr(buff, "root_dir");
+		if(tmp != NULL) {
+			tmp = &tmp[9];
+			i = 0;
+			while(tmp[i] != '\n' && i < PATH_MAX) {
+				config->root_dir[i] = tmp[i];
+				i++;
+			}
+			config->root_dir[i] = '\0';
+		} else {
+			tmp = strstr(buff, "user_name");
+			if(tmp != NULL) {
+				tmp = &tmp[10];
+				i = 0;
+				while(tmp[i] != '\n' && i < MAX_USERNAME_LENGTH) {
+					config->user_name[i] = tmp[i];
+					i++;
 				}
-				config->root_dir[j] = '\0';
-			} else if(i-9 >= 0 && buff[i-9] == 'u') {
-				for(j = 0, buffi = i+1; buffi < len && buff[buffi] != '\n' && j < MAX_USERNAME_LENGTH-1; j++, buffi++) {
-					config->user_name[j] = buff[buffi];
+				config->user_name[i] = '\0';
+			} else {
+				tmp = strstr(buff, "max_connections");
+				if(tmp != NULL) {
+					tmp = &tmp[16];
+					i = 0;
+					while(tmp[i] != '\n' && i < NUMBUFF_LEN) {
+						numbuff[i] = tmp[i];
+						i++;
+					}
+					numbuff[i] = '\0';
+					config->max_connections = atoi(numbuff);
+				} else {
+					tmp = strstr(buff, "max_retry");
+					if(tmp != NULL) {
+						tmp = &tmp[10];
+						i = 0;
+						while(tmp[i] != '\n' && i < NUMBUFF_LEN) {
+							numbuff[i] = tmp[i];
+							i++;
+						}
+						numbuff[i] = '\0';
+						config->max_retry = atoi(numbuff);
+					} else {
+						tmp = strstr(buff, "seconds_timeout");
+						if(tmp != NULL) {
+							tmp = &tmp[16];
+							i = 0;
+							while(tmp[i] != '\n' && i < NUMBUFF_LEN) {
+								numbuff[i] = tmp[i];
+								i++;
+							}
+							numbuff[i] = '\0';
+							config->seconds_timeout = atoi(numbuff);
+						}
+					}
 				}
-				config->user_name[j] = '\0';
-			} else if(i-15 >= 0 && buff[i-15] == 'm') {
-				for(j = 0, buffi = i+1; buffi < len && buff[buffi] != '\n' && j < MAX_CONN_STRLEN-1; j++, buffi++) {
-					num_buff[j] = buff[buffi];
-				}
-				num_buff[j] = '\0';
-				config->max_connections = atoi(num_buff);
 			}
 		}
+
+		num_bytes += newlineindex + 1;
+		pos = lseek(fd, num_bytes, SEEK_SET);
+		if(pos == -1 || pos != num_bytes) {
+			error = 1;
+			break;
+		}
 	}
-	return 0;
+	if(bytes_read == -1 || error) {
+		error = 1;
+		syslog(LOG_CRIT, "Failed reading file %s", CONFIGURATION_FILE);
+	}
+	if(close(fd) != -1 && !error) {
+		return 0;
+	} else {
+		syslog(LOG_CRIT, "Failed closing file %s", CONFIGURATION_FILE);
+		return -1;
+	}
 }
 
 int apply_config(configuration *config) {
@@ -82,7 +160,7 @@ int apply_config(configuration *config) {
 		return -1;
 	}
 	if((config->user_name != NULL) && ((userent = getpwnam(config->user_name)) == NULL)) {
-		syslog(LOG_EMERG, "User not found!");
+		syslog(LOG_EMERG, "User <%s> not found!", config->user_name);
 		return -1;
 	}
 
@@ -107,6 +185,18 @@ int apply_config(configuration *config) {
 			syslog(LOG_EMERG, "seteuid failed!!");
 			return -1;
 		}
+	}
+	if(config->max_connections <= 0) {
+		syslog(LOG_EMERG, "max_connections can't be %d", config->max_connections);
+		return -1;
+	}
+	if(config->max_retry < 0) {
+		syslog(LOG_EMERG, "max_retry can't be %d", config->max_retry);
+		return -1;
+	}
+	if(config->seconds_timeout <= 0) {
+		syslog(LOG_EMERG, "seconds_timeout can't be %d", config->seconds_timeout);
+		return -1;
 	}
 	return 0;
 }

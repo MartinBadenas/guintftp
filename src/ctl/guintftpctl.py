@@ -1,6 +1,8 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
+from __future__ import with_statement
+
 __license__ = "GPL"
 __copyright__ = """
 Copyright (C) 2010 Dani Hernández Juárez, dhernandez0@gmail.com
@@ -22,7 +24,6 @@ You should have received a copy of the GNU General Public License
 along with Guintftp.  If not, see <http://www.gnu.org/licenses/>.
 """
 
-from __future__ import with_statement
 import os, sys, signal, subprocess, time
 
 PID_FILE = '/var/run/guintftp.pid' # pid file path
@@ -51,8 +52,9 @@ def get_pid():
 
 def start(pid):
     '''Starts the daemon, this ensures that it's not running before and cleans pid file if needed'''
+    worked = False
     if pid != None and pid_running(pid):
-        sys.exit("It's already running, pid: %s" % pid)
+        sys.stderr.write("It's already running, pid: %s\n" % pid)
     else:
         # If pid isn't running and pid file exists remove it
         if pid != None:
@@ -63,6 +65,7 @@ def start(pid):
             retcode = subprocess.call(PROGRAM)
             if retcode == 0:
                 print 'OK'
+                worked = True
             else:
                 try:
                     os.unlink(PID_FILE)
@@ -71,12 +74,14 @@ def start(pid):
                 print 'ERROR (return code: %s)' % str(retcode)
         except Exception as e:
             print 'ERROR (%s)' % str(e)
+    return worked
 
 
 def stop(pid, signal_kill=signal.SIGTERM):
     '''Stops the daemon, sends signal and waits until daemon has died and removes pid file'''
+    worked = False
     if pid == None:
-        sys.exit("Daemon isn't running")
+        sys.stderr.write("Daemon isn't running\n")
     else:
         print 'Stopping...',
         sys.stdout.flush()
@@ -91,20 +96,22 @@ def stop(pid, signal_kill=signal.SIGTERM):
             if not pid_running(pid):
                 os.unlink(PID_FILE)
                 print 'OK'
+                worked = True
             else:
                 print 'ERROR (Unknown, pid (%s) is still running)' % str(pid)
         except Exception as e:
             print 'ERROR (%s)' % str(e)
+    return worked
         
 
 def force_stop(pid):
     '''Stops the daemon, sends SIGKILL and waits until daemon has died and removes pid file'''
-    stop(pid, signal.SIGKILL)
+    return stop(pid, signal.SIGKILL)
 
 def restart(pid):
     '''Restarts the daemon, stop() and start()'''
     stop(pid)
-    start(pid)
+    return start(pid)
 
 def status(pid):
     '''Prints daemon status'''
@@ -112,12 +119,13 @@ def status(pid):
         print 'Running, pid: %s' % str(pid)
     else:
         print 'Not running'
+    return True
 
 
 if __name__ == '__main__':
     # We need to be root
     if os.geteuid() != 0:
-        sys.exit('You must be root!')
+        sys.stderr.write('You must be root!\n')
     else:
         # Make a dictionary {function_name, function_pointer}
         functions = [start, stop, force_stop, restart, status]
@@ -126,9 +134,12 @@ if __name__ == '__main__':
             actions[i.func_name] = i
         # Check whether there're enough arguments and that they're correct  
         if len(sys.argv) == 1 or not sys.argv[1] in actions:
-            sys.exit('Usage %s {%s}' % (sys.argv[0], '|'.join(actions.keys())))
+            sys.stderr.write('Usage %s {%s}\n' % (sys.argv[0], '|'.join(actions.keys())))
         else:
             # Execute action
             func = actions[sys.argv[1]]
             pid = get_pid()
-            func(pid)
+            if func(pid):
+                sys.exit()
+            else:
+                sys.exit(1)

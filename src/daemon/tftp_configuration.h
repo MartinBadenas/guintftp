@@ -30,6 +30,8 @@ typedef struct {
 	char root_dir[PATH_MAX];
 	char user_name[MAX_USERNAME_LENGTH];
 	int max_connections;
+	int seconds_timeout;
+	int max_retry;
 	int port;
 } configuration;
 

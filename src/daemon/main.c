@@ -35,6 +35,8 @@
 #include "tftp_net.h"
 #include "config.h"
 
+#define DEBUG 0
+
 /* This connection (port 69 UDP) must be global because we need to close it from signal handlers */
 connection conn;
 
@@ -48,7 +50,7 @@ void sig_term() {
 }
 
 
-int main(int argc, char *argv[]) {
+int main() {
 	int16_t error, packet_len;
 	configuration config;
 	char first_packet[MAX_PACKET_SIZE];
@@ -68,12 +70,17 @@ int main(int argc, char *argv[]) {
 	/* This created a fork and calls setsid (so the child won't die) and kills main process */
 	if(daemon(0, 0) == -1) {
 		/* This error cannot be logged, syslog is still not opened */
-		fprintf(stderr, "daemon syscall failed (errno: %d)!\n", errno);
+		fprintf(stderr, "daemon syscall failed (errno: %d)\n", errno);
 		return EXIT_FAILURE;
 	}
 	/* open syslog connection! */
 	openlog(PACKAGE_TARNAME, syslog_options, LOG_DAEMON);
-	setlogmask(LOG_UPTO(LOG_INFO));
+	if(DEBUG) {
+		setlogmask(LOG_UPTO(LOG_DEBUG));
+	} else {
+		setlogmask(LOG_UPTO(LOG_INFO));
+
+	}
 	/* Let's create pid file */
 	if(write_pid() == -1) {
 		return EXIT_FAILURE;

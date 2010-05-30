@@ -1,0 +1,38 @@
+=encoding UTF-8
+
+=head1 NAME
+
+	guintftp - TFTP Server
+
+=head1 SYNOPSIS
+
+	guintftp
+
+=head1 DESCRIPTION
+
+	guintftp is a server for the IPv4 Trivial File Transfer Protocol (TFTP), RFC 1350.
+
+=head1 AUTHOR
+
+	Dani Hernández Juárez <dhernandez0@gmail.com>
+	Martin Badenas Beltrán <martin.badenas@gmail.com>
+
+=head1 RETURN VALUE
+	
+	Returns -1 if there was some error, 0 if server started successfully
+
+=head1 DIAGNOSTICS
+
+	Possible stderr errors:
+	- Must run as root
+	- daemon syscall failed
+	
+	Other errors will be logged with syslog.
+
+=head1 SEE ALSO
+
+	tftp(1), guintftpctl(8)
+
+=head1 REPORTING BUGS
+
+	Report bugs to <dhernandez0@gmail.com>

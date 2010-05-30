@@ -47,12 +47,12 @@ int open_lseek(const char *filename, off_t desiredpos, int flags, mode_t mode) {
 		fd = open(filename, flags, mode);
 	}
 	if(fd == -1) {
-		syslog(LOG_CRIT, "Failed opening file!");
+		syslog(LOG_CRIT, "Failed opening file %s", filename);
 		return -1;
 	}
 	pos = lseek(fd, desiredpos, SEEK_SET);
 	if(pos == -1 || pos != desiredpos) {
-		syslog(LOG_CRIT, "lseek error");
+		syslog(LOG_CRIT, "lseek error, filename: %s", filename);
 		return -1;
 	}
 	return fd;
