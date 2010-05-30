@@ -9,3 +9,4 @@ guintftp_SOURCES = src/daemon/main.c src/daemon/tftp_configuration.c \
 					src/daemon/tftp_packet.c src/daemon/tftp_packet.h
 
 dist_noinst_SCRIPTS = autogen.sh
+dist_sysconf_DATA = guintftp.conf

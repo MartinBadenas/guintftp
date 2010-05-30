@@ -31,7 +31,7 @@
 #include "tftp_io.h"
 
 #define DEFAULT_PORT 69
-#define CONFIGURATION_FILE "/etc/guintftp.conf"
+#define CONFIGURATION_FILE "/usr/local/etc/guintftp.conf"
 #define BUFFER_LEN PATH_MAX+MAX_USERNAME_LENGTH+200
 
 int load_config(configuration *config) {
