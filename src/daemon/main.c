@@ -33,8 +33,7 @@
 #include "tftp_packet.h"
 #include "tftp_management.h"
 #include "tftp_net.h"
-
-#define PROGRAM_NAME "guintftp"
+#include "config.h"
 
 /* This connection (port 69 UDP) must be global because we need to close it from signal handlers */
 connection conn;
@@ -47,7 +46,6 @@ void sig_term() {
 	closelog();
 	exit(EXIT_SUCCESS);
 }
-#include "tftp_net.h"
 
 
 int main(int argc, char *argv[]) {
@@ -74,12 +72,12 @@ int main(int argc, char *argv[]) {
 		return EXIT_FAILURE;
 	}
 	/* open syslog connection! */
-	openlog(PROGRAM_NAME, syslog_options, LOG_DAEMON);
+	openlog(PACKAGE_TARNAME, syslog_options, LOG_DAEMON);
+	setlogmask(LOG_UPTO(LOG_INFO));
 	/* Let's create pid file */
 	if(write_pid() == -1) {
 		return EXIT_FAILURE;
 	}
-	/* TODO: just send LOG_INFO and above */
 	syslog(LOG_NOTICE, "Starting...");
 	syslog(LOG_NOTICE, "Setting signal handlers...");
 	signal(SIGCHLD, sig_chld);
@@ -105,7 +103,10 @@ int main(int argc, char *argv[]) {
 		syslog(LOG_NOTICE, "Waiting for connection on port <%d>...", config.port);
 		packet_len = recv_packet(&conn, first_packet, MAX_PACKET_SIZE);
 		if(packet_len != 0) {
-			/* This connection failed, can't send error packet because we don't know client IP:PORT, continue! */
+			/* This connection failed, can't send error packet because we don't know client IP:PORT, log if critical and continue! */
+			if(errno == ENOBUFS || errno == ENOMEM) {
+				syslog(LOG_ALERT, "Failed receiving packet (allocation exceeded, errno: %d)", errno);
+			}
 			continue;
 		}
 		new_connection(&config, first_packet, packet_len, &conn);

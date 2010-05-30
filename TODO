@@ -1,0 +1,10 @@
+* finish send_file
+- timeouts
+- configuration module revision (and timeouts)
+- read rfc again
+- automake, autoconf... (and remove .project and eclipse files)
+- guintftp and guintftpctl man
+- documentation (ptts...)
+- test!
+- libwrapper (xinetd)
+- tftp protocol extensions

@@ -72,7 +72,7 @@ int16_t read_bytes(const char *filename, off_t desiredpos, char *buff, uint16_t 
 	}
 	
 	if(num_bytes == -1) {
-		syslog(LOG_ALERT, "Failed reading file");
+		syslog(LOG_ALERT, "Couldn't read file %s", filename);
 		return -1;
 	}
 	if(close_file(fd) == -1)
@@ -100,7 +100,7 @@ int16_t write_bytes(const char *filename, off_t desiredpos, const char *buff, ui
 	}
 	
 	if(error == -1) {
-		syslog(LOG_ALERT, "Failed writing file");
+		syslog(LOG_ERR, "Couldn't write to file %s", filename);
 		return -1;
 	}
 	

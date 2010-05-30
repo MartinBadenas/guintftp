@@ -74,6 +74,25 @@ int16_t send_ack(connection *conn, packet_ack *ack) {
 	return 0;
 }
 
+int16_t send_data(connection *conn, packet_data *data, int16_t len) {
+	char *data_buff;
+	packet_error error;
+	packet_data *data_tmp;
+
+	if(packet_data_to_bytes(&data_buff, data) == -1 || send_packet(conn, data_buff, len) == -1) {
+		/* data packet is created here, creating or sending it failed, so it's an internal error */
+		syslog(LOG_CRIT, "Internal error sending ACK");
+		error.op = ERROR;
+		error.error_code = ERROR_CUSTOM;
+		strcpy(error.errmsg, "Internal error");
+		send_error(conn, &error);
+		return -1;
+	}
+	/* Llamamos a la función buff_to_packet_data para reordenar los bytes en el orden correcto para la arquitectura (ntohs) */
+	buff_to_packet_data(data_buff, len, &data_tmp);
+	return 0;
+}
+
 int16_t dispatch_request(connection *conn, char *packet, uint16_t len, connection *parent_conn) {
 	packet_type type;
 	packet_error error;
@@ -98,7 +117,14 @@ int16_t dispatch_request(connection *conn, char *packet, uint16_t len, connectio
 		break;
 	case WRQ:
 		if(receive_file(conn, &first_packet) == -1) {
-			/* TODO: remove file if it exists */
+			/* Receiving file failed, remove file if it exists */
+			if(access(first_packet.filename, R_OK) == 0) {
+				if(unlink(first_packet.filename) == -1) {
+					syslog(LOG_ERR, "Couldn't delete file after failure, remove manually: %s (errno: %d)", first_packet.filename, errno);
+				} else {
+					syslog(LOG_INFO, "File removed after failure: %s", first_packet.filename);
+				}
+			}
 			return -1;
 		}
 		break;
@@ -110,47 +136,117 @@ int16_t dispatch_request(connection *conn, char *packet, uint16_t len, connectio
 }
 int16_t send_file(connection *conn, packet_read_write *first_packet) {
 	packet_error error;
+	packet_ack *ack;
+	packet_data data;
+	int16_t recv_bufflen, read_bufflen;
+	char recv_buff[ACK_SIZE];
 	struct stat stat_file;
+	off_t filepos = 0;
 
 	error.op = ERROR;
-	if(access(first_packet->filename, R_OK) == -1) {
+	/* Check whether the file is greater than TFTP protocol can handle */
+	if(stat(first_packet->filename, &stat_file) == -1) {
 		switch(errno) {
-		case ENOENT:
-			syslog(LOG_ERR, "File not found <%s>", first_packet->filename);
-			error.error_code = ERROR_FILE_NOT_FOUND;
-			break;
 		case EACCES:
-		case ELOOP:
 		case ENAMETOOLONG:
 		case ENOTDIR:
-		case EROFS:
-		case EFAULT:
-		case ETXTBSY:
-			syslog(LOG_ERR, "Access violation <%s>", first_packet->filename);
+			/* Access violation */
+			syslog(LOG_ALERT, "Access violation <%s>", first_packet->filename);
 			error.error_code = ERROR_ACCESS_VIOLATION;
 			break;
 		case EIO:
-		case ENOMEM:
+		case ELOOP:
+			/* No resources available! */
 			syslog(LOG_ALERT, "No resources available! Error when attending request <%s>", first_packet->filename);
 			error.error_code = ERROR_DISK_FULL_OR_ALLOCATION_EXCEEDED;
-		default:
-			syslog(LOG_ALERT, "Unexpected error! Error when attending request <%s>", first_packet->filename);
+			break;
+		case ENOENT:
+			/* If size overflows size it's too large */
+			syslog(LOG_ALERT, "File is doesn't exist <%s>", first_packet->filename);
+			error.error_code = ERROR_FILE_NOT_FOUND;
+			break;
+		case EOVERFLOW:
+			/* If size overflows size it's too large */
+			syslog(LOG_ALERT, "File is too large <%s>", first_packet->filename);
 			error.error_code = ERROR_CUSTOM;
-			strcpy(error.errmsg, "Internal error");
+			strcpy(error.errmsg, "File is too large");
+			break;
 		}
 		send_error(conn, &error);
-		return -1;
-	}
-	/* Check whether the file is greater than TFTP protocol can handle */
-	if(stat(first_packet->filename, &stat_file) == -1) {
 		return -1;
 	}
 	/* We can't send files equal or greater than (DATA_SIZE * MAX_BLOCK_SIZE) because block field is an unsigned short,
 	 * if it's exactly (DATA_SIZE * MAX_BLOCK_SIZE) we would need to send another packet without data to close the connection
 	 */
 	if(stat_file.st_size >= DATA_SIZE * MAX_BLOCK_SIZE) {
+		error.error_code = ERROR_CUSTOM;
+		strcpy(error.errmsg, "File is too large");
+		send_error(conn, &error);
 		return -1;
 	}
+	syslog(LOG_INFO, "Sending file <%s>", first_packet->filename);
+	data.op = DATA;
+	data.block = 1;
+	do {
+		/* TODO: comment */
+		if((read_bufflen = read_bytes(first_packet->filename, filepos, data.data, DATA_SIZE)) == -1) {
+			if(errno == ENOBUFS || errno == ENXIO || errno == ENOMEM) {
+				error.error_code = ERROR_DISK_FULL_OR_ALLOCATION_EXCEEDED;
+			} else if(errno == EACCES || errno == EROFS) {
+				error.error_code = ERROR_ACCESS_VIOLATION;
+			} else {
+				error.error_code = ERROR_CUSTOM;
+				strcpy(error.errmsg, "Internal error");
+			}
+			send_error(conn, &error);
+			return -1;
+		}
+		/* File may have grown during file transfer */
+		if(read_bufflen == DATA_SIZE && data.block == MAX_BLOCK_SIZE) {
+			syslog(LOG_ALERT, "File too large, maybe grown while sending? or a size wasn't correct?");
+			error.error_code = ERROR_CUSTOM;
+			strcpy(error.errmsg, "File is too large, maybe was modified during transfer");
+			send_error(conn, &error);
+			return -1;
+		}
+		/* TODO: comment */
+		if(send_data(conn, &data, read_bufflen) == -1) {
+			return -1;
+		}
+		if((recv_bufflen = recv_packet(conn, recv_buff, ACK_SIZE)) == -1) {
+			if(errno == ENOBUFS || errno == ENOMEM) {
+				syslog(LOG_ALERT, "Failed receiving packet (allocation exceeded, errno: %d)", errno);
+				error.error_code = ERROR_DISK_FULL_OR_ALLOCATION_EXCEEDED;
+			} else {
+				syslog(LOG_ERR, "Failed receiving packet");
+				error.error_code = ERROR_CUSTOM;
+				strcpy(error.errmsg, "Failed receiving packet");
+			}
+			send_error(conn, &error);
+			return -1;
+		}
+		if(recv_bufflen == -2) {
+			/* Send error BUT continue listening */
+			error.error_code = ERROR_UNKNOWN_TRANSFER_ID;
+			if(send_error(conn, &error) == -1) {
+				return -1;
+			}
+			/* Let's restore correct address */
+			conn->address_len = conn->last_address_len;
+			conn->address = conn->last_address;
+			continue;
+		}
+		/* Send a illegal operation if packet is not well-formed or ack block is not correct and close connection */
+		if(buff_to_packet_ack(recv_buff, recv_bufflen, &ack) == -1 || ack->block != data.block) {
+			error.error_code = ERROR_ILLEGAL_OPERATION;
+			send_error(conn, &error);
+			return -1;
+		}
+		/* Everything was OK, increment block and file position */
+		filepos += recv_bufflen;
+		data.block++;
+	} while(recv_bufflen == DATA_SIZE);
+
 	return 0;
 }
 int16_t receive_file(connection *conn, packet_read_write *first_packet) {
@@ -158,8 +254,8 @@ int16_t receive_file(connection *conn, packet_read_write *first_packet) {
 	packet_data *data;
 	packet_error error;
 	char recv_buff[MAX_PACKET_SIZE];
-	off_t filepos;
 	int16_t recv_bufflen, bytes_minus, datalen;
+	off_t filepos = 0;
 	int last_packet = 0;
 
 	error.op = ERROR;
@@ -192,24 +288,31 @@ int16_t receive_file(connection *conn, packet_read_write *first_packet) {
 		send_error(conn, &error);
 	}
 	syslog(LOG_INFO, "Receiving file <%s>", first_packet->filename);
-	filepos = 0;
 	ack.op = ACK;
 	ack.block = 0;
 	if(send_ack(conn, &ack) == -1) {
 		return -1;
 	}
 	do {
-		if((recv_bufflen = recv_packet(conn, recv_buff, MAX_PACKET_SIZE)) == -1) {
-			syslog(LOG_ERR, "Failed receiving packet");
-			error.error_code = ERROR_CUSTOM;
-			strcpy(error.errmsg, "Failed receiving packet");
+		if((recv_bufflen = recv_packet(conn, recv_buff, DATA_SIZE)) == -1) {
+			if(errno == ENOBUFS || errno == ENOMEM) {
+				syslog(LOG_ALERT, "Failed receiving packet (allocation exceeded, errno: %d)", errno);
+				error.error_code = ERROR_DISK_FULL_OR_ALLOCATION_EXCEEDED;
+			} else {
+				syslog(LOG_ERR, "Failed receiving packet");
+				error.error_code = ERROR_CUSTOM;
+				strcpy(error.errmsg, "Failed receiving packet");
+			}
 			send_error(conn, &error);
 			return -1;
 		}
 		if(recv_bufflen == -2) {
-			/* Should send error BUT continue listening */
+			/* Send error BUT continue listening */
 			error.error_code = ERROR_UNKNOWN_TRANSFER_ID;
-			send_error(conn, &error);
+			if(send_error(conn, &error) == -1) {
+				return -1;
+			}
+			/* Let's restore correct address */
 			conn->address_len = conn->last_address_len;
 			conn->address = conn->last_address;
 			continue;
@@ -225,34 +328,42 @@ int16_t receive_file(connection *conn, packet_read_write *first_packet) {
 			send_error(conn, &error);
 			return -1;
 		}
-		bytes_minus = chars_to_mode(first_packet, data->data, sizeof(data->data));
-		if(bytes_minus == -1) {
-			error.error_code = ERROR_CUSTOM;
-			/* TODO: ????? */
-			strcpy(error.errmsg, "Bad encoded netascii");
-			send_error(conn, &error);
-			return -1;
-		}
-		datalen = recv_bufflen - bytes_minus - 4;
-		/* datalen == 0 is only allowed as last packet */
-		if(datalen == 0 && data->block == 1) {
-			syslog(LOG_ERR, "datalen == 0 and block == 1, datalen == 1 is only allowed as last packet");
-			error.error_code = ERROR_CUSTOM;
-			strcpy(error.errmsg, "Received an empty data packet (zero data length, and is not allowed)");
-			send_error(conn, &error);
-			return -1;
-		}
-		if(write_bytes(first_packet->filename, filepos, data->data, datalen) == -1) {
-			syslog(LOG_ERR, "Couldn't write to file %s", first_packet->filename);
-			if(errno == EFBIG || errno == ENOSPC || errno == ENOBUFS || errno == ENXIO || errno == EMFILE || errno == ENFILE || errno == ENOMEM) {
-				error.error_code = ERROR_DISK_FULL_OR_ALLOCATION_EXCEEDED;
-			} else if(errno == EACCES || errno == EROFS) {
-				error.error_code = ERROR_ACCESS_VIOLATION;
+		datalen = recv_bufflen - 4;
+		if(datalen == 0 && data->block > 1) {
+			/* This is the last packet, datalen == 0 so we don't need to do anything but send ack */
+			syslog(LOG_INFO, "Last packet with datalen == 0");
+		} else {
+			bytes_minus = chars_to_mode(first_packet, data->data, datalen);
+			if(bytes_minus == -1) {
+				error.error_code = ERROR_CUSTOM;
+				strcpy(error.errmsg, "Bad encoded netascii");
+				send_error(conn, &error);
+				return -1;
 			}
-			send_error(conn, &error);
-			return -1;
+			/* Recalculate datalen */
+			datalen -= bytes_minus;
+			/* datalen == 0 is only allowed as last packet */
+			if(datalen == 0 && data->block == 1) {
+				syslog(LOG_ERR, "datalen == 0 and block == 1, datalen == 1 is only allowed as last packet");
+				error.error_code = ERROR_CUSTOM;
+				strcpy(error.errmsg, "Received an empty data packet (zero data length, and is not allowed)");
+				send_error(conn, &error);
+				return -1;
+			}
+			if(write_bytes(first_packet->filename, filepos, data->data, datalen) == -1) {
+				if(errno == EFBIG || errno == ENOSPC || errno == ENOBUFS || errno == ENXIO || errno == EMFILE || errno == ENFILE || errno == ENOMEM) {
+					error.error_code = ERROR_DISK_FULL_OR_ALLOCATION_EXCEEDED;
+				} else if(errno == EACCES || errno == EROFS) {
+					error.error_code = ERROR_ACCESS_VIOLATION;
+				} else {
+					error.error_code = ERROR_CUSTOM;
+					strcpy(error.errmsg, "Internal error");
+				}
+				send_error(conn, &error);
+				return -1;
+			}
+			filepos += datalen;
 		}
-		filepos += datalen;
 		last_packet = !(recv_bufflen == MAX_PACKET_SIZE);
 		if(!last_packet && ack.block == MAX_BLOCK_SIZE - 1) {
 			syslog(LOG_ERR, "Client is trying to send a file too large (exceeds TFTP block size)");
@@ -320,7 +431,7 @@ int16_t write_pid() {
 	/* We need to write the pid to a pid file, so the init.d script can read it */
 	pid = getpid();
 	/* Convert pid to ascii */
-	sprintf(strpid, "%d", pid);
+	sprintf(strpid, "%d\n", pid);
 	if(write_bytes(PID_FILE, 0, strpid, strlen(strpid)) == -1) {
 		syslog(LOG_EMERG, "Couldn't create pid file");
 		return -1;

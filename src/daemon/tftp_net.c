@@ -80,14 +80,14 @@ int16_t send_packet(connection *conn, char *packet, int len) {
 	char *ip;
 	
 	ip = inet_ntoa(conn->remote_address.sin_addr);
-	printf("send_packet remote_address: %s\n", ip);
-	printf("send_packet conn->socket: %d\n", conn->socket);
-	printf("send_packet len: %d\n", len);
-	printf("send_packet conn->remote_address_len: %d\n", conn->remote_address_len);
-	printf("send_packet port: %d", ntohs(conn->remote_address.sin_port));
+	syslog(LOG_DEBUG, "send_packet remote_address: %s", ip);
+	syslog(LOG_DEBUG, "send_packet conn->socket: %d", conn->socket);
+	syslog(LOG_DEBUG, "send_packet len: %d", len);
+	syslog(LOG_DEBUG, "send_packet conn->remote_address_len: %d", conn->remote_address_len);
+	syslog(LOG_DEBUG, "send_packet port: %d", ntohs(conn->remote_address.sin_port));
 	numSent = sendto(conn->socket, packet, len, 0, (struct sockaddr *) &conn->remote_address, conn->remote_address_len);
 	if(numSent == -1) {
-		syslog(LOG_ERR, "error sending data");
+		syslog(LOG_ERR, "Error sending data");
 		return -1;
 	}
 	
@@ -108,6 +108,7 @@ int16_t recv_packet(connection *conn, char *packet, int maxlen) {
 	}
 	if((conn->last_address_len != conn->remote_address_len || (conn->last_address.sin_addr.s_addr == conn->remote_address.sin_addr.s_addr && conn->last_address.sin_port == conn->remote_address.sin_port)) &&
 		(conn->last_address_len != conn->dummy_address_len || (conn->last_address.sin_addr.s_addr == conn->dummy_address.sin_addr.s_addr && conn->last_address.sin_port == conn->dummy_address.sin_port))) {
+		syslog(LOG_ERR, "Connection error, from and incorrect TID (expected: %s and was: %s)", inet_ntoa(conn->last_address.sin_addr), inet_ntoa(conn->address.sin_addr));
 		return -2;
 	}
 	return numRecv;

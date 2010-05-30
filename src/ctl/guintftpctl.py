@@ -50,10 +50,9 @@ def get_pid():
         return None
 
 def start(pid):
-    '''Starts the daemon, this ensures that it's not running before and cleans pid file if needed, returns True when worked False otherwise'''
-    code = False
+    '''Starts the daemon, this ensures that it's not running before and cleans pid file if needed'''
     if pid != None and pid_running(pid):
-        sys.stderr.write("It's already running, pid: %s\n" % pid)
+        sys.exit("It's already running, pid: %s" % pid)
     else:
         # If pid isn't running and pid file exists remove it
         if pid != None:
@@ -64,7 +63,6 @@ def start(pid):
             retcode = subprocess.call(PROGRAM)
             if retcode == 0:
                 print 'OK'
-                code = True
             else:
                 try:
                     os.unlink(PID_FILE)
@@ -73,14 +71,12 @@ def start(pid):
                 print 'ERROR (return code: %s)' % str(retcode)
         except Exception as e:
             print 'ERROR (%s)' % str(e)
-    return code
 
 
 def stop(pid, signal_kill=signal.SIGTERM):
-    '''Stops the daemon, sends signal and waits until daemon has died and removes pid file, returns True when worked False otherwise'''
-    code = False
+    '''Stops the daemon, sends signal and waits until daemon has died and removes pid file'''
     if pid == None:
-        sys.stderr.write("Daemon isn't running\n")
+        sys.exit("Daemon isn't running")
     else:
         print 'Stopping...',
         sys.stdout.flush()
@@ -95,32 +91,27 @@ def stop(pid, signal_kill=signal.SIGTERM):
             if not pid_running(pid):
                 os.unlink(PID_FILE)
                 print 'OK'
-                code = True
             else:
                 print 'ERROR (Unknown, pid (%s) is still running)' % str(pid)
         except Exception as e:
             print 'ERROR (%s)' % str(e)
-    return code
         
 
 def force_stop(pid):
-    '''Stops the daemon, sends SIGKILL and waits until daemon has died and removes pid file, returns True when worked False otherwise'''
-    return stop(pid, signal.SIGKILL)
+    '''Stops the daemon, sends SIGKILL and waits until daemon has died and removes pid file'''
+    stop(pid, signal.SIGKILL)
 
 def restart(pid):
-    '''Restarts the daemon, stop() and start(), returns True when worked False otherwise'''
-    if stop(pid):
-        return start(pid)
-    else:
-        return False
+    '''Restarts the daemon, stop() and start()'''
+    stop(pid)
+    start(pid)
 
 def status(pid):
-    '''Prints daemon status, always returns True'''
+    '''Prints daemon status'''
     if pid_running(pid):
         print 'Running, pid: %s' % str(pid)
     else:
         print 'Not running'
-    return True
 
 
 if __name__ == '__main__':
@@ -140,4 +131,4 @@ if __name__ == '__main__':
             # Execute action
             func = actions[sys.argv[1]]
             pid = get_pid()
-            sys.exit(func(pid))
+            func(pid)
