@@ -99,6 +99,7 @@ int16_t dispatch_request(configuration *conf, connection *conn, char *packet, ui
 	packet_type type;
 	packet_error error;
 	packet_read_write first_packet;
+	int16_t res;
 	
 	error.op = ERROR;
 	if(guess_packet_type(packet, len, &type) == -1) {
@@ -118,9 +119,9 @@ int16_t dispatch_request(configuration *conf, connection *conn, char *packet, ui
 		}
 		break;
 	case WRQ:
-		if(receive_file(conf, conn, &first_packet) == -1) {
-			/* Receiving file failed, remove file if it exists */
-			if(access(first_packet.filename, R_OK) == 0) {
+		if((res = receive_file(conf, conn, &first_packet)) < 0) {
+			/* Receiving file failed, remove file if it exists and return code is -1, -2 is NOT REMOVE!! */
+			if(res == -1 && access(first_packet.filename, R_OK) == 0) {
 				if(unlink(first_packet.filename) == -1) {
 					syslog(LOG_ERR, "Couldn't delete file after failure, remove manually: %s (errno: %d)", first_packet.filename, errno);
 				} else {
@@ -206,6 +207,8 @@ int16_t send_file(configuration *conf, connection *conn, packet_read_write *firs
 			send_error(conn, &error);
 			return -1;
 		}
+		/* Convert to netascii if needed */
+		mode_to_chars(first_packet, data.data, read_bufflen);
 		/* File may have grown during file transfer */
 		if(read_bufflen == DATA_SIZE && data.block == MAX_BLOCK_SIZE) {
 			syslog(LOG_ALERT, "File too large, maybe grown while sending? or a size wasn't correct?");
@@ -227,7 +230,7 @@ int16_t send_file(configuration *conf, connection *conn, packet_read_write *firs
 			FD_ZERO(&rfds);
 			/* Wait for this socket to have data */
 			FD_SET(conn->socket, &rfds);
-			if((retselect = select(1, &rfds, NULL, NULL, &timeout)) == -1) {
+			if((retselect = select(conn->socket + 1, &rfds, NULL, NULL, &timeout)) == -1) {
 				syslog(LOG_EMERG, "select() failed (errno: %d)", errno);
 				return -1;
 			}
@@ -275,9 +278,9 @@ int16_t send_file(configuration *conf, connection *conn, packet_read_write *firs
 			return -1;
 		}
 		/* Everything was OK, increment block and file position */
-		filepos += recv_bufflen;
+		filepos += read_bufflen;
 		data.block++;
-	} while(recv_bufflen == DATA_SIZE);
+	} while(read_bufflen == DATA_SIZE);
 
 	return 0;
 }
@@ -299,7 +302,7 @@ int16_t receive_file(configuration *conf, connection *conn, packet_read_write *f
 		syslog(LOG_ERR, "File already exists <%s> ", first_packet->filename);
 		error.error_code = ERROR_ALREADY_EXISTS;
 		send_error(conn, &error);
-		return -1;
+		return -2;
 	} else if(errno != ENOENT) {
 		switch(errno) {
 		case EACCES:
@@ -330,6 +333,7 @@ int16_t receive_file(configuration *conf, connection *conn, packet_read_write *f
 		return -1;
 	}
 	do {
+		syslog(LOG_DEBUG, "Ready to receive another DATA packet");
 		times_tried = 0;
 		do {
 			/* Setting timeout, we need to do this here because select modifies timeout values */
@@ -339,7 +343,7 @@ int16_t receive_file(configuration *conf, connection *conn, packet_read_write *f
 			FD_ZERO(&rfds);
 			/* Wait for this socket to have data */
 			FD_SET(conn->socket, &rfds);
-			if((retselect = select(1, &rfds, NULL, NULL, &timeout)) == -1) {
+			if((retselect = select(conn->socket + 1, &rfds, NULL, NULL, &timeout)) == -1) {
 				syslog(LOG_EMERG, "select() failed (errno: %d)", errno);
 				return -1;
 			}
@@ -357,7 +361,7 @@ int16_t receive_file(configuration *conf, connection *conn, packet_read_write *f
 				}
 			}
 		} while(retselect == 0);
-		if((recv_bufflen = recv_packet(conn, recv_buff, DATA_SIZE)) == -1) {
+		if((recv_bufflen = recv_packet(conn, recv_buff, MAX_PACKET_SIZE)) == -1) {
 			if(errno == ENOBUFS || errno == ENOMEM) {
 				syslog(LOG_ALERT, "Failed receiving packet (allocation exceeded, errno: %d)", errno);
 				error.error_code = ERROR_DISK_FULL_OR_ALLOCATION_EXCEEDED;
@@ -439,6 +443,7 @@ int16_t receive_file(configuration *conf, connection *conn, packet_read_write *f
 		if(send_ack(conn, &ack) == -1) {
 			return -1;
 		}
+		syslog(LOG_DEBUG, "recv_bufflen = %d, last_packet: %d", recv_bufflen, last_packet);
 	} while(!last_packet);
 
 	return 0;
@@ -504,6 +509,9 @@ int16_t write_pid() {
 
 void sig_chld() {
 	syslog(LOG_NOTICE, "Child terminated :)");
+	if(wait(NULL) == -1) {
+		syslog(LOG_CRIT, "Wait failed :(");
+	}
 	num_pids--;
 }
 

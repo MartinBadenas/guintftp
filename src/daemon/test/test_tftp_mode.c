@@ -87,21 +87,22 @@ START_TEST(test_mode_to_chars) {
 
 START_TEST(test_delete_character) {
 	char texto[] = "prueba";
-	int16_t res;
+	int16_t res, len;
 
-	res = delete_character(1, texto);
+	len = strlen(texto);
+	res = delete_character(1, texto, len);
 	fail_unless(res == 0);
-	fail_unless(strlen(texto) == 5);
+	fail_unless(len == 5);
 
-	res = delete_character(1, texto);
+	res = delete_character(1, texto, len);
 	fail_unless(res == 0);
-	fail_unless(strlen(texto) == 4);
+	fail_unless(len == 4);
 
-	res = delete_character(3, texto);
+	res = delete_character(3, texto, len);
 	fail_unless(res == 0);
-	fail_unless(strlen(texto) == 3);
+	fail_unless(len == 3);
 
-	res = delete_character(4, texto);
+	res = delete_character(4, texto, len);
 	fail_unless(res == -1);
 } END_TEST
 

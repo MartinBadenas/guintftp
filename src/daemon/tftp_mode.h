@@ -36,6 +36,6 @@ int16_t chars_to_mode(packet_read_write *reference, char *text, int16_t textlen)
 /* Internal functions */
 int16_t move_right_insert(int16_t position, char charAdd, char *text);
 int16_t move_right_put_after(int16_t position, char charAdd, char *text);
-int16_t delete_character(int16_t position, char *text);
+int16_t delete_character(int16_t position, char *text, int16_t max);
 
 #endif /*TFTP_MODE_H_*/

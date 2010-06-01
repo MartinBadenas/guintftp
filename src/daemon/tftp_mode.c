@@ -26,7 +26,7 @@
 int16_t mode_to_chars(packet_read_write *reference, char *text, int16_t textlen) {
 /* return negative number to error.
  * return 0 to nothing changes
- * return positive number if any chars are lose*/
+ * return positive number if any chars are lost*/
 	int16_t i, result, tmplen;
 	i = 0;
 	result = 0;
@@ -113,12 +113,13 @@ int16_t chars_to_mode(packet_read_write *reference, char *text, int16_t textlen)
 		/*si encuentra \r\n o \n\r se quita la \r*/
 		while(i < textlen) {
 				if(text[i - 1] == '\r' && text[i] == '\n') {
-					delete_character(i - 1, text);
+					delete_character(i - 1, text, textlen);
 					result++;
-				}
-				else if(text[i - 1] == '\n' && text[i] == '\r') {
-					delete_character(i, text);
+					textlen--;
+				} else if(text[i - 1] == '\n' && text[i] == '\r') {
+					delete_character(i, text, textlen);
 					result++;
+					textlen--;
 				}
 				i++;
 		}
@@ -127,15 +128,11 @@ int16_t chars_to_mode(packet_read_write *reference, char *text, int16_t textlen)
 	return result;
 }
 
-int16_t delete_character(int16_t position, char *text) {
-	int16_t max;
-	
+int16_t delete_character(int16_t position, char *text, int16_t max) {
 	if(position < 0) {
 		syslog(LOG_WARNING, "Incorrect position, not negative");
 		return -1;
 	}
-	
-	max = strlen(text);
 	
 	if(position >= max) {
 		syslog(LOG_WARNING, "Incorrect position, to long");

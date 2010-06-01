@@ -2,9 +2,7 @@
 * configuration module revision (and timeouts)
 * automake, autoconf... (and remove .project and eclipse files)
 * guintftp and guintftpctl man
-- timeouts
-- read rfc again
-- documentation (ptts...)
+* timeouts
 - test!
-- libwrapper (xinetd)
+- libwrap
 - tftp protocol extensions

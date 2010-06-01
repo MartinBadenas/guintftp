@@ -1,0 +1,33 @@
+This is release 0.1 of guintftp.
+
+See the file "NEWS" to find out what is new in this Flex release.
+
+Read the file "INSTALL" for general installation directives.  Peek near
+the beginning of the file "Makefile.in" for special DEFS values.  On most
+systems, you can just run the "configure" script and type "make" to build
+flex; then "make check" to test whether it built correctly; and if it did,
+then "make install" to install it.
+
+The flex distribution consists of the following files:
+
+	README          						This message
+	
+	NEWS            						User-visible changes worth mentioning
+	
+	INSTALL         						General installation information
+	
+	COPYING         						guintftp's copyright
+	
+	AUTHORS									Authors of this program
+	
+	TODO									Pending tasks
+	
+	ChangeLog								Describes all the changes made to program source files
+	
+	configure.ac, Makefile.am, autogen.sh	Elements of the autotools auto-configuration process
+	
+	guintftp.conf							Default configuration file
+	
+	man/									Man files
+	
+	src/									Source code
