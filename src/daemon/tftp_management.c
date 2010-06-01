@@ -207,8 +207,8 @@ int16_t send_file(configuration *conf, connection *conn, packet_read_write *firs
 			send_error(conn, &error);
 			return -1;
 		}
-		/* Convert to netascii if needed */
-		mode_to_chars(first_packet, data.data, read_bufflen);
+		/* TODO: Convert to netascii if needed */
+		/* mode_to_chars(first_packet, data.data, read_bufflen); */
 		/* File may have grown during file transfer */
 		if(read_bufflen == DATA_SIZE && data.block == MAX_BLOCK_SIZE) {
 			syslog(LOG_ALERT, "File too large, maybe grown while sending? or a size wasn't correct?");
