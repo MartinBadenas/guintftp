@@ -155,10 +155,6 @@ int load_config(configuration *config) {
 int apply_config(configuration *config) {
 	struct passwd *userent = NULL;
 
-	if(geteuid() != 0) {
-		syslog(LOG_EMERG, "this process should be running as root!!");
-		return -1;
-	}
 	if((config->user_name != NULL) && ((userent = getpwnam(config->user_name)) == NULL)) {
 		syslog(LOG_EMERG, "User <%s> not found!", config->user_name);
 		return -1;

@@ -41,7 +41,7 @@ int open_lseek(const char *filename, off_t desiredpos, int flags, mode_t mode) {
 	int fd;
 	off_t pos;
 	
-	if(mode == -1) {
+	if(mode == 0) {
 		fd = open(filename, flags);
 	} else {
 		fd = open(filename, flags, mode);
@@ -62,7 +62,7 @@ int16_t read_bytes(const char *filename, off_t desiredpos, char *buff, uint16_t 
 	int fd;
 	ssize_t num_bytes = 0, num_readed = 0;
 	
-	fd = open_lseek(filename, desiredpos, O_RDONLY, -1);
+	fd = open_lseek(filename, desiredpos, O_RDONLY, 0);
 	if(fd == -1) {
 		return -1;
 	}

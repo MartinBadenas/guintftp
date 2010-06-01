@@ -40,11 +40,11 @@ typedef struct {
 } connection;
 
 int16_t new_connection(configuration *conf, char *packet, uint16_t len, connection *parent_conn);
-int16_t dispatch_request(connection *conn, char *paquet, uint16_t len, connection *parent_conn);
-int16_t send_file(connection *conn, packet_read_write *first_packet);
-int16_t receive_file(connection *conn, packet_read_write *first_packet);
+int16_t dispatch_request(configuration *conf, connection *conn, char *paquet, uint16_t len);
+int16_t send_file(configuration *conf, connection *conn, packet_read_write *first_packet);
+int16_t receive_file(configuration *conf, connection *conn, packet_read_write *first_packet);
 int16_t send_error(connection *conn, packet_error *error);
-int16_t write_pid();
+int16_t write_pid(void);
 void sig_chld();
 void wait_children_die();
 

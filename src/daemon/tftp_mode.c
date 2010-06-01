@@ -27,7 +27,7 @@ int16_t mode_to_chars(packet_read_write *reference, char *text, int16_t textlen)
 /* return negative number to error.
  * return 0 to nothing changes
  * return positive number if any chars are lose*/
-	int16_t i, result;
+	int16_t i, result, tmplen;
 	i = 0;
 	result = 0;
 	if(strncmp(reference->mode, "netascii", 8)==0) {
@@ -41,7 +41,8 @@ int16_t mode_to_chars(packet_read_write *reference, char *text, int16_t textlen)
 					result++;
 				}
 			} else if(text[i] == '\r') {
-				if(i < (strlen(text) - 1)) {
+				tmplen = strlen(text);
+				if(i < (tmplen - 1)) {
 					if(text[i + 1] != '\n') {
 						move_right_put_after(i, '\n', text);
 						result++;

@@ -21,7 +21,7 @@
 #ifndef TFTP_CONFIGURATION_H_
 #define TFTP_CONFIGURATION_H_
 
-#include <limits.h>
+#include <linux/limits.h>
 
 #define MAX_USERNAME_LENGTH 32
 #define MAX_CONN_STRLEN 10

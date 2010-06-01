@@ -63,7 +63,8 @@ def start(pid):
         sys.stdout.flush()
         try:
             retcode = subprocess.call(PROGRAM)
-            if retcode == 0:
+            time.sleep(WAIT_TIME)
+            if retcode == 0 and pid_running(get_pid()):
                 print 'OK'
                 worked = True
             else:
@@ -110,8 +111,10 @@ def force_stop(pid):
 
 def restart(pid):
     '''Restarts the daemon, stop() and start()'''
-    stop(pid)
-    return start(pid)
+    if stop(pid):
+        return start(None)
+    else:
+        return False
 
 def status(pid):
     '''Prints daemon status'''

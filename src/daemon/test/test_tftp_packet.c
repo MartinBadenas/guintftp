@@ -232,7 +232,7 @@ START_TEST(test_buff_to_packet_error) {
 	 char buff[516];
 	 char *pnt;
 	 int len = sizeof(buff);
-	 int i, error_code;
+	 int i, nerror_code;
 	 packet_error *error;
 	 char custom_error[] = "Custom error!!";
 	 char error_codes[][192] = {
@@ -253,11 +253,11 @@ START_TEST(test_buff_to_packet_error) {
 	pnt = &buff[4];
 	len = strlen(custom_error);
 	strncpy(pnt, custom_error, len);
-	error_code = 0;
+	nerror_code = 0;
 	len += 4;
 	fail_unless(buff_to_packet_error(buff, len, &error) == 0);
 	fail_unless(error->op == ERROR);
-	fail_unless(error->error_code == error_code);
+	fail_unless(error->error_code == nerror_code);
 	fail_unless(strcmp(custom_error, error->errmsg) == 0);
 	fail_unless(strlen(custom_error) == strlen(error->errmsg));
 
@@ -265,16 +265,16 @@ START_TEST(test_buff_to_packet_error) {
 	for(i = 0; i < 7; i++) {
 		memset(buff, 0, len);
 		buff[1] = ERROR;
-		error_code = i + 1;
+		nerror_code = i + 1;
 		buff[2] = 0;
-		buff[3] = error_code;
+		buff[3] = nerror_code;
 		pnt = &buff[4];
 		len = strlen(error_codes[i]);
 		strncpy(pnt, error_codes[i], len);
 		len += 4;
 		fail_unless(buff_to_packet_error(buff, len, &error) == 0);
 		fail_unless(error->op == ERROR);
-		fail_unless(error->error_code == error_code);
+		fail_unless(error->error_code == nerror_code);
 		fail_unless(strcmp(error_codes[i], error->errmsg) == 0);
 		fail_unless(strlen(error_codes[i]) == strlen(error->errmsg));
 	}

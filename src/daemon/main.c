@@ -21,7 +21,6 @@
 #include <stdio.h>
 #include <errno.h>
 #include <sys/socket.h>
-#include <resolv.h>
 #include <signal.h>
 #include <sys/types.h>
 #include <signal.h>
@@ -35,7 +34,7 @@
 #include "tftp_net.h"
 #include "config.h"
 
-#define DEBUG 0
+#define DEBUG 1
 
 /* This connection (port 69 UDP) must be global because we need to close it from signal handlers */
 connection conn;
@@ -62,7 +61,7 @@ int main() {
 	 * LOG_ODELAY - off	- not used, backward compatibility
 	 */
 	int syslog_options = LOG_PID | LOG_NDELAY;
-	
+
 	if(geteuid() != 0) {
 		fprintf(stderr, "Must run as root\n");
 		return -1;
@@ -109,7 +108,7 @@ int main() {
 	while(1) {
 		syslog(LOG_NOTICE, "Waiting for connection on port <%d>...", config.port);
 		packet_len = recv_packet(&conn, first_packet, MAX_PACKET_SIZE);
-		if(packet_len != 0) {
+		if(packet_len <= 0) {
 			/* This connection failed, can't send error packet because we don't know client IP:PORT, log if critical and continue! */
 			if(errno == ENOBUFS || errno == ENOMEM) {
 				syslog(LOG_ALERT, "Failed receiving packet (allocation exceeded, errno: %d)", errno);

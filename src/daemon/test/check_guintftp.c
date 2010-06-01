@@ -106,3 +106,4 @@ int main() {
 
 	return (nf == 0) ? 0 : 1;
 }
+

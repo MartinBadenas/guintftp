@@ -28,6 +28,7 @@
 #include <errno.h>
 #include <sys/stat.h>
 #include <string.h>
+#include <sys/select.h>
 
 #include "tftp_management.h"
 #include "tftp_packet.h"
@@ -94,7 +95,7 @@ int16_t send_data(connection *conn, packet_data *data, int16_t len) {
 	return 0;
 }
 
-int16_t dispatch_request(connection *conn, char *packet, uint16_t len, connection *parent_conn) {
+int16_t dispatch_request(configuration *conf, connection *conn, char *packet, uint16_t len) {
 	packet_type type;
 	packet_error error;
 	packet_read_write first_packet;
@@ -112,12 +113,12 @@ int16_t dispatch_request(connection *conn, char *packet, uint16_t len, connectio
 	}
 	switch(type) {
 	case RRQ:
-		if(send_file(conn, &first_packet) == -1) {
+		if(send_file(conf, conn, &first_packet) == -1) {
 			return -1;
 		}
 		break;
 	case WRQ:
-		if(receive_file(conn, &first_packet) == -1) {
+		if(receive_file(conf, conn, &first_packet) == -1) {
 			/* Receiving file failed, remove file if it exists */
 			if(access(first_packet.filename, R_OK) == 0) {
 				if(unlink(first_packet.filename) == -1) {
@@ -135,7 +136,7 @@ int16_t dispatch_request(connection *conn, char *packet, uint16_t len, connectio
 	}
 	return 0;
 }
-int16_t send_file(connection *conn, packet_read_write *first_packet) {
+int16_t send_file(configuration *conf, connection *conn, packet_read_write *first_packet) {
 	packet_error error;
 	packet_ack *ack;
 	packet_data data;
@@ -143,6 +144,9 @@ int16_t send_file(connection *conn, packet_read_write *first_packet) {
 	char recv_buff[ACK_SIZE];
 	struct stat stat_file;
 	off_t filepos = 0;
+	struct timeval timeout;
+	fd_set rfds;
+	int retselect = 0, times_tried = 0;
 
 	error.op = ERROR;
 	/* Check whether the file is greater than TFTP protocol can handle */
@@ -211,9 +215,36 @@ int16_t send_file(connection *conn, packet_read_write *first_packet) {
 			return -1;
 		}
 		/* TODO: comment */
-		if(send_data(conn, &data, read_bufflen) == -1) {
+		if(send_data(conn, &data, read_bufflen + MIN_DATA_SIZE) == -1) {
 			return -1;
 		}
+		times_tried = 0;
+		do {
+			/* Setting timeout, we need to do this here because select modifies timeout values */
+			timeout.tv_sec = conf->seconds_timeout;
+			timeout.tv_usec = 0;
+			/* Clears fd set */
+			FD_ZERO(&rfds);
+			/* Wait for this socket to have data */
+			FD_SET(conn->socket, &rfds);
+			if((retselect = select(1, &rfds, NULL, NULL, &timeout)) == -1) {
+				syslog(LOG_EMERG, "select() failed (errno: %d)", errno);
+				return -1;
+			}
+			times_tried++;
+			if(retselect == 0) {
+				if(times_tried >= conf->max_retry) {
+					syslog(LOG_ERR, "Max retry reached");
+					return -1;
+				} else {
+					/* Send last packet */
+					syslog(LOG_ERR, "Connection timeout, sending last packet, tried %d times out of %d", times_tried, conf->max_retry);
+					if(send_data(conn, &data, read_bufflen) == -1) {
+						return -1;
+					}
+				}
+			}
+		} while(retselect == 0);
 		if((recv_bufflen = recv_packet(conn, recv_buff, ACK_SIZE)) == -1) {
 			if(errno == ENOBUFS || errno == ENOMEM) {
 				syslog(LOG_ALERT, "Failed receiving packet (allocation exceeded, errno: %d)", errno);
@@ -250,7 +281,8 @@ int16_t send_file(connection *conn, packet_read_write *first_packet) {
 
 	return 0;
 }
-int16_t receive_file(connection *conn, packet_read_write *first_packet) {
+
+int16_t receive_file(configuration *conf, connection *conn, packet_read_write *first_packet) {
 	packet_ack ack;
 	packet_data *data;
 	packet_error error;
@@ -258,6 +290,9 @@ int16_t receive_file(connection *conn, packet_read_write *first_packet) {
 	int16_t recv_bufflen, bytes_minus, datalen;
 	off_t filepos = 0;
 	int last_packet = 0;
+	struct timeval timeout;
+	fd_set rfds;
+	int retselect = 0, times_tried = 0;
 
 	error.op = ERROR;
 	if(access(first_packet->filename, F_OK) == 0) {
@@ -295,6 +330,33 @@ int16_t receive_file(connection *conn, packet_read_write *first_packet) {
 		return -1;
 	}
 	do {
+		times_tried = 0;
+		do {
+			/* Setting timeout, we need to do this here because select modifies timeout values */
+			timeout.tv_sec = conf->seconds_timeout;
+			timeout.tv_usec = 0;
+			/* Clears fd set */
+			FD_ZERO(&rfds);
+			/* Wait for this socket to have data */
+			FD_SET(conn->socket, &rfds);
+			if((retselect = select(1, &rfds, NULL, NULL, &timeout)) == -1) {
+				syslog(LOG_EMERG, "select() failed (errno: %d)", errno);
+				return -1;
+			}
+			times_tried++;
+			if(retselect == 0) {
+				if(times_tried >= conf->max_retry) {
+					syslog(LOG_ERR, "Max retry reached");
+					return -1;
+				} else {
+					/* Send last packet */
+					syslog(LOG_ERR, "Connection timeout, sending last packet");
+					if(send_ack(conn, &ack) == -1) {
+						return -1;
+					}
+				}
+			}
+		} while(retselect == 0);
 		if((recv_bufflen = recv_packet(conn, recv_buff, DATA_SIZE)) == -1) {
 			if(errno == ENOBUFS || errno == ENOMEM) {
 				syslog(LOG_ALERT, "Failed receiving packet (allocation exceeded, errno: %d)", errno);
@@ -412,7 +474,7 @@ int16_t new_connection(configuration *conf, char *packet, uint16_t len, connecti
 	}
 	if(pid == 0) {
 		syslog(LOG_DEBUG, "remote_address: %s", inet_ntoa(parent_conn->remote_address.sin_addr));
-		if(dispatch_request(&conn, packet, len, parent_conn) == 0) {
+		if(dispatch_request(conf, &conn, packet, len) == 0) {
 			res = EXIT_SUCCESS;
 		} else {
 			res = EXIT_FAILURE;

@@ -205,7 +205,7 @@ int16_t packet_error_to_bytes(char **buffer, packet_error *packet) {
 		return -1;
 	}
 	/* Checking that error code is valid */
-	if(packet->error_code < 0 || packet->error_code > 7) {
+	if(packet->error_code > 7) {
 		syslog(LOG_ERR, "Invalid error code!");
 		return -1;
 	}
@@ -227,7 +227,7 @@ int16_t packet_error_to_bytes(char **buffer, packet_error *packet) {
 	return len;
 }
 
-int16_t error_code(uint16_t error_code, char **string, uint16_t *len) {
+int16_t error_code(uint16_t nerror_code, char **string, uint16_t *len) {
 	static char *error_codes[7] = {
 	"File not found.",
 	"Access violation.",
@@ -237,12 +237,12 @@ int16_t error_code(uint16_t error_code, char **string, uint16_t *len) {
 	"File already exists.",
 	"No such user."
 	};
-	error_code--;
-	if(error_code > 6 || error_code < 0) {
+	nerror_code--;
+	if(nerror_code > 6) {
 		syslog(LOG_ERR, "invalid error_code");
 		return -1;
 	}
-	*string = error_codes[error_code];
-	*len = strlen(error_codes[error_code]);
+	*string = error_codes[nerror_code];
+	*len = strlen(error_codes[nerror_code]);
 	return 0;
 }
