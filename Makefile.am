@@ -14,6 +14,7 @@ guintftp_SOURCES = src/daemon/main.c \
 dist_noinst_SCRIPTS = autogen.sh man/genMan.sh
 dist_sysconf_DATA = guintftp.conf
 man_MANS = man/guintftp.8 man/guintftpctl.8
+EXTRA_DIST = man/guintftp.8 man/guintftp.pod man/guintftpctl.8 man/guintftpctl.pod src/ctl/guintftpctl.py
 
 INCLUDES                    = @CHECK_CFLAGS@
 if HAVE_CHECK
