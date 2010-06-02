@@ -34,7 +34,7 @@
 #include "tftp_net.h"
 #include "config.h"
 
-#define DEBUG 1
+#define DEBUG 0
 
 /* This connection (port 69 UDP) must be global because we need to close it from signal handlers */
 connection conn;

@@ -6,3 +6,4 @@
 - test!
 - libwrap
 - tftp protocol extensions
+- signal problem, use sigaction instead
