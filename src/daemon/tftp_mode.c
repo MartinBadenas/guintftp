@@ -34,17 +34,20 @@ int16_t mode_to_chars(packet_read_write *reference, char *text, int16_t textlen)
 		while(i < textlen) {
 			if(text[i] == '\n') {
 				if(i == 0) {
-					move_right_insert(i, '\r', text);
+					move_right_insert(i, '\r', text, textlen);
+					textlen--;
 					result++;
 				} else if(text[i - 1] != '\r') {
-					move_right_insert(i, '\r', text);
+					move_right_insert(i, '\r', text, textlen);
+					textlen--;
 					result++;
 				}
 			} else if(text[i] == '\r') {
 				tmplen = strlen(text);
 				if(i < (tmplen - 1)) {
 					if(text[i + 1] != '\n') {
-						move_right_put_after(i, '\n', text);
+						move_right_put_after(i, '\n', text, textlen);
+						textlen--;
 						result++;
 					}
 				}
@@ -55,15 +58,13 @@ int16_t mode_to_chars(packet_read_write *reference, char *text, int16_t textlen)
 	/* no changes, return 0 */
 	return result;
 }
-int16_t move_right_insert(int16_t position, char charAdd, char *text) {
-	int16_t max, pos;
+int16_t move_right_insert(int16_t position, char charAdd, char *text, int16_t max) {
+	int16_t pos;
 	
 	if(position < 0) {
 		syslog(LOG_WARNING, "Incorrect position, not negative");
 		return -1;
 	}
-	
-	max = strlen(text);
 	
 	if(position >= max) {
 		syslog(LOG_WARNING, "Incorrect position, to long");
@@ -78,15 +79,13 @@ int16_t move_right_insert(int16_t position, char charAdd, char *text) {
 	text[position] = charAdd;
 	return 0;
 }
-int16_t move_right_put_after(int16_t position, char charAdd, char *text) {
-	int16_t max, pos;
+int16_t move_right_put_after(int16_t position, char charAdd, char *text, int16_t max) {
+	int16_t pos;
 	
 	if(position < 0) {
 		syslog(LOG_WARNING, "Incorrect position, not negative");
 		return -1;
 	}
-	
-	max = strlen(text);
 	
 	if(position >= max) {
 		syslog(LOG_WARNING, "Incorrect position, to long");

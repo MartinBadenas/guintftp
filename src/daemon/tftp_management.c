@@ -147,7 +147,7 @@ int16_t send_file(configuration *conf, connection *conn, packet_read_write *firs
 	off_t filepos = 0;
 	struct timeval timeout;
 	fd_set rfds;
-	int retselect = 0, times_tried = 0;
+	int retselect = 0, times_tried = 0, bytesdiscarded = 0;
 
 	error.op = ERROR;
 	/* Check whether the file is greater than TFTP protocol can handle */
@@ -207,8 +207,13 @@ int16_t send_file(configuration *conf, connection *conn, packet_read_write *firs
 			send_error(conn, &error);
 			return -1;
 		}
-		/* TODO: Convert to netascii if needed */
-		/* mode_to_chars(first_packet, data.data, read_bufflen); */
+		/* Convert to netascii if needed */
+		if((bytesdiscarded = mode_to_chars(first_packet, data.data, read_bufflen)) == -1) {
+			syslog(LOG_ERR, "Bad netascii");
+			error.error_code = ERROR_CUSTOM;
+			strcpy(error.errmsg, "Internal error");
+			send_error(conn, &error);
+		}
 		/* File may have grown during file transfer */
 		if(read_bufflen == DATA_SIZE && data.block == MAX_BLOCK_SIZE) {
 			syslog(LOG_ALERT, "File too large, maybe grown while sending? or a size wasn't correct?");
@@ -278,7 +283,7 @@ int16_t send_file(configuration *conf, connection *conn, packet_read_write *firs
 			return -1;
 		}
 		/* Everything was OK, increment block and file position */
-		filepos += read_bufflen;
+		filepos += read_bufflen - bytesdiscarded;
 		data.block++;
 	} while(read_bufflen == DATA_SIZE);
 

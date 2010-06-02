@@ -28,35 +28,37 @@
 
 START_TEST(test_move_right_insert) {
 	char texto[] = "prueba";
-	int16_t res;
+	int16_t res, len;
 
-	res = move_right_insert(0, 'z', texto);
+	len = strlen(texto);
+	res = move_right_insert(0, 'z', texto, len);
 	fail_unless(res == 0);
 
-	res = move_right_insert(1, 'y', texto);
+	res = move_right_insert(1, 'y', texto, len);
 	fail_unless(res == 0);
 
-	res = move_right_insert(-2, 'x', texto);
+	res = move_right_insert(-2, 'x', texto, len);
 	fail_unless(res == -1);
 
-	res = move_right_insert(6, 'w', texto);
+	res = move_right_insert(6, 'w', texto, len);
 	fail_unless(res == -1);
 } END_TEST
 
 START_TEST(test_move_right_put_after) {
 	char texto[] = "prueba";
-	int16_t res;
+	int16_t res, len;
 
-	res = move_right_put_after(0, 'z', texto);
+	len = strlen(texto);
+	res = move_right_put_after(0, 'z', texto, len);
 	fail_unless(res == 0);
 
-	res = move_right_put_after(1, 'y', texto);
+	res = move_right_put_after(1, 'y', texto, len);
 	fail_unless(res == 0);
 
-	res = move_right_put_after(-2, 'x', texto);
+	res = move_right_put_after(-2, 'x', texto, len);
 	fail_unless(res == -1);
 
-	res = move_right_put_after(6, 'w', texto);
+	res = move_right_put_after(6, 'w', texto, len);
 	fail_unless(res == -1);
 } END_TEST
 

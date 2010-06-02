@@ -111,10 +111,8 @@ def force_stop(pid):
 
 def restart(pid):
     '''Restarts the daemon, stop() and start()'''
-    if stop(pid):
-        return start(None)
-    else:
-        return False
+    stop(pid)
+    return start(None)
 
 def status(pid):
     '''Prints daemon status'''
