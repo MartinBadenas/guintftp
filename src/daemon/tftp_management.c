@@ -33,6 +33,7 @@
 #include "tftp_management.h"
 #include "tftp_packet.h"
 #include "tftp_net.h"
+#include "tftp_block_io.h"
 #include "tftp_io.h"
 
 #define PID_FILE "/var/run/guintftp.pid"
@@ -144,10 +145,10 @@ int16_t send_file(configuration *conf, connection *conn, packet_read_write *firs
 	int16_t recv_bufflen, read_bufflen;
 	char recv_buff[ACK_SIZE];
 	struct stat stat_file;
-	off_t filepos = 0;
 	struct timeval timeout;
 	fd_set rfds;
-	int retselect = 0, times_tried = 0, bytesdiscarded = 0;
+	fd file;
+	int retselect = 0, times_tried = 0;
 
 	error.op = ERROR;
 	/* Check whether the file is greater than TFTP protocol can handle */
@@ -190,12 +191,13 @@ int16_t send_file(configuration *conf, connection *conn, packet_read_write *firs
 		send_error(conn, &error);
 		return -1;
 	}
+	openfd(&file, first_packet);
 	syslog(LOG_INFO, "Sending file <%s>", first_packet->filename);
 	data.op = DATA;
 	data.block = 1;
 	do {
 		/* TODO: comment */
-		if((read_bufflen = read_bytes(first_packet->filename, filepos, data.data, DATA_SIZE)) == -1) {
+		if((read_bufflen = read_block(&file, data.data)) == -1) {
 			if(errno == ENOBUFS || errno == ENXIO || errno == ENOMEM) {
 				error.error_code = ERROR_DISK_FULL_OR_ALLOCATION_EXCEEDED;
 			} else if(errno == EACCES || errno == EROFS) {
@@ -207,13 +209,13 @@ int16_t send_file(configuration *conf, connection *conn, packet_read_write *firs
 			send_error(conn, &error);
 			return -1;
 		}
-		/* Convert to netascii if needed */
+		/* Convert to netascii if needed
 		if((bytesdiscarded = mode_to_chars(first_packet, data.data, read_bufflen)) == -1) {
 			syslog(LOG_ERR, "Bad netascii");
 			error.error_code = ERROR_CUSTOM;
 			strcpy(error.errmsg, "Internal error");
 			send_error(conn, &error);
-		}
+		}*/
 		/* File may have grown during file transfer */
 		if(read_bufflen == DATA_SIZE && data.block == MAX_BLOCK_SIZE) {
 			syslog(LOG_ALERT, "File too large, maybe grown while sending? or a size wasn't correct?");
@@ -282,8 +284,7 @@ int16_t send_file(configuration *conf, connection *conn, packet_read_write *firs
 			send_error(conn, &error);
 			return -1;
 		}
-		/* Everything was OK, increment block and file position */
-		filepos += read_bufflen - bytesdiscarded;
+		/* Everything was OK, increment block */
 		data.block++;
 	} while(read_bufflen == DATA_SIZE);
 
@@ -295,11 +296,11 @@ int16_t receive_file(configuration *conf, connection *conn, packet_read_write *f
 	packet_data *data;
 	packet_error error;
 	char recv_buff[MAX_PACKET_SIZE];
-	int16_t recv_bufflen, bytes_minus, datalen;
-	off_t filepos = 0;
+	int16_t recv_bufflen, datalen;
 	int last_packet = 0;
 	struct timeval timeout;
 	fd_set rfds;
+	fd file;
 	int retselect = 0, times_tried = 0;
 
 	error.op = ERROR;
@@ -331,6 +332,7 @@ int16_t receive_file(configuration *conf, connection *conn, packet_read_write *f
 		}
 		send_error(conn, &error);
 	}
+	openfd(&file, first_packet);
 	syslog(LOG_INFO, "Receiving file <%s>", first_packet->filename);
 	ack.op = ACK;
 	ack.block = 0;
@@ -405,6 +407,7 @@ int16_t receive_file(configuration *conf, connection *conn, packet_read_write *f
 			/* This is the last packet, datalen == 0 so we don't need to do anything but send ack */
 			syslog(LOG_INFO, "Last packet with datalen == 0");
 		} else {
+			/*
 			bytes_minus = chars_to_mode(first_packet, data->data, datalen);
 			if(bytes_minus == -1) {
 				error.error_code = ERROR_CUSTOM;
@@ -412,8 +415,9 @@ int16_t receive_file(configuration *conf, connection *conn, packet_read_write *f
 				send_error(conn, &error);
 				return -1;
 			}
-			/* Recalculate datalen */
+			/ Recalculate datalen /
 			datalen -= bytes_minus;
+			*/
 			/* datalen == 0 is only allowed as last packet */
 			if(datalen == 0 && data->block == 1) {
 				syslog(LOG_ERR, "datalen == 0 and block == 1, datalen == 1 is only allowed as last packet");
@@ -422,7 +426,7 @@ int16_t receive_file(configuration *conf, connection *conn, packet_read_write *f
 				send_error(conn, &error);
 				return -1;
 			}
-			if(write_bytes(first_packet->filename, filepos, data->data, datalen) == -1) {
+			if(write_block(&file, data->data, datalen) == -1) {
 				if(errno == EFBIG || errno == ENOSPC || errno == ENOBUFS || errno == ENXIO || errno == EMFILE || errno == ENFILE || errno == ENOMEM) {
 					error.error_code = ERROR_DISK_FULL_OR_ALLOCATION_EXCEEDED;
 				} else if(errno == EACCES || errno == EROFS) {
@@ -434,7 +438,6 @@ int16_t receive_file(configuration *conf, connection *conn, packet_read_write *f
 				send_error(conn, &error);
 				return -1;
 			}
-			filepos += datalen;
 		}
 		last_packet = !(recv_bufflen == MAX_PACKET_SIZE);
 		if(!last_packet && ack.block == MAX_BLOCK_SIZE - 1) {

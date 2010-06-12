@@ -25,7 +25,6 @@
 
 #include "test_tftp_packet.c"
 #include "test_tftp_io.c"
-#include "test_tftp_mode.c"
 
 
 Suite *guintftp_suite() {
@@ -41,25 +40,6 @@ Suite *guintftp_suite() {
 	tcase_add_test(tc, test_write_block);
 	suite_add_tcase(s, tc);
 	/* end test IO */
-
-	/* test mode */
-	tc = tcase_create("test mode");
-
-	tcase_add_test(tc, test_move_right_insert);
-	suite_add_tcase(s, tc);
-
-	tcase_add_test(tc, test_move_right_put_after);
-	suite_add_tcase(s, tc);
-
-	tcase_add_test(tc, test_mode_to_chars);
-	suite_add_tcase(s, tc);
-
-	tcase_add_test(tc, test_delete_character);
-	suite_add_tcase(s, tc);
-
-	tcase_add_test(tc, test_chars_to_mode);
-	suite_add_tcase(s, tc);
-	/* end test mode */
 
 	/* test packet */
 	tc = tcase_create("test packet");
