@@ -71,12 +71,12 @@ START_TEST(test_buff_to_packet_read_write) {
 	int i;
 
 	/* read packet */
-	memset(buff, 0, len*sizeof(char));
+	memset(buff, 0, len);
 	buff[1] = 1;
 	pnt = &buff[2];
-	memcpy(pnt, filename, (strlen(filename) + 1)*sizeof(char));
+	memcpy(pnt, filename, (strlen(filename) + 1));
 	pnt = &buff[strlen(filename) + 3];
-	memcpy(pnt, mode, (strlen(mode) + 1)*sizeof(char));
+	memcpy(pnt, mode, (strlen(mode) + 1));
 
 	len = 4 + strlen(filename) + 1 + strlen(mode) + 1;
 	res = buff_to_packet_read_write(buff, len, &packet);
@@ -167,7 +167,7 @@ START_TEST(test_buff_to_packet_data) {
 	int16_t res;
 
 	len = strlen(data) + 5;
-	memset(buff, 0, len*sizeof(char));
+	memset(buff, 0, len);
 	buff[1] = (char) opcode  & 0xff;
 	buff[2] = (char) block >> 8;
 	buff[3] = (char) block & 0xff;
@@ -302,21 +302,24 @@ START_TEST(test_buff_to_packet_error) {
 
 START_TEST(test_packet_data_to_bytes) {
 	char *buff;
-	char databuff[512];
+	char databuff[DATA_SIZE];
 	packet_data data;
-	uint16_t len;
+	size_t len, i;
 	short block;
 
+	for(i = 0; i < DATA_SIZE; i++) {
+		databuff[i] = i;
+	}
 	/* valid packet */
 	data.op = DATA;
 	data.block = 10;
-	len = 516;
+	len = sizeof(databuff);
 	memcpy(data.data, databuff, len);
 	fail_unless(packet_data_to_bytes(&buff, &data) == 0);
 	fail_unless(buff[1] == DATA);
 	block = *(short*) &buff[2];
 	fail_unless(block == data.block);
-	fail_unless(memcmp(data.data, &buff[4], len - 4) == 0);
+	fail_unless(memcmp(data.data, &buff[4], len) == 0);
 
 	/* invalid opcode */
 	data.op = ACK;
@@ -333,15 +336,14 @@ START_TEST(test_packet_ack_to_bytes) {
 	packet_ack ack;
 	int result;
 	char *buff;
-	int len = sizeof(buff);
 	char expected[4] = {0, ACK, 0, 10};
 
 	/* valid packet */
 	ack.block = 10;
 	ack.op = ACK;
 	result = packet_ack_to_bytes(&buff, &ack);
-	fail_unless(result == len);
-	fail_unless(memcmp(expected, buff, sizeof(buff)) == 0);
+	fail_unless(result == ACK_SIZE);
+	fail_unless(memcmp(expected, buff, ACK_SIZE) == 0);
 
 	/* invalid packet */
 	ack.op = DATA;

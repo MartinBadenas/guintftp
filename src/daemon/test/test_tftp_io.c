@@ -22,15 +22,15 @@
 #include <assert.h>
 #include <stdio.h>
 #include <check.h>
-/*
-#include "test_tftp_io.h"
-*/
+
 #include "../tftp_io.h"
 #include "../tftp_packet.h"
 
 START_TEST(test_read_block) {
 	char bytes[15360];
-	int i, byteslen, bufflen;
+	char buff[DATA_SIZE];
+	int i, byteslen;
+	int16_t error;
 
 	byteslen = sizeof(bytes);
 	for(i = 0; i < byteslen; i++) {
@@ -38,21 +38,19 @@ START_TEST(test_read_block) {
 	}
 
 	for(i = 0; i < byteslen / DATA_SIZE; i++) {
-		bufflen = byteslen - i*DATA_SIZE;
-		if(bufflen > DATA_SIZE) {
-			bufflen = DATA_SIZE;
-		}
-		bufflen = read_bytes("/home/dani/workspace/guintftp/test/io_tests/write_test.bin", i*bufflen, bytes, bufflen);
-		fail_unless(bufflen != -1);
+		error = read_bytes("./src/daemon/test/io_tests/write_test.bin", i*DATA_SIZE, buff, DATA_SIZE);
+		fail_unless(memcmp(buff, &bytes[i*DATA_SIZE], DATA_SIZE) == 0);
+		fail_unless(error != -1);
 	}
 	fail_unless(i*DATA_SIZE == byteslen);
 
-	fail_unless(read_bytes("/error-non-existent-file", 100, bytes, 100) == -1);
+	fail_unless(read_bytes("/error-non-existent-file", 100, buff, 100) == -1);
 } END_TEST
 
 START_TEST(test_write_block) {
 	char bytes[15360];
-	int i, byteslen, bufflen;
+	int i, byteslen;
+	int16_t error;
 
 	byteslen = sizeof(bytes);
 	for(i = 0; i < byteslen; i++) {
@@ -60,12 +58,8 @@ START_TEST(test_write_block) {
 	}
 
 	for(i = 0; i < byteslen / DATA_SIZE; i++) {
-		bufflen = byteslen - i*DATA_SIZE;
-		if(bufflen > DATA_SIZE) {
-			bufflen = DATA_SIZE;
-		}
-		bufflen = write_bytes("/home/dani/workspace/guintftp/test/io_tests/write_test.bin", i*bufflen, bytes, bufflen);
-		fail_unless(bufflen != -1);
+		error = write_bytes("./src/daemon/test/io_tests/write_test.bin", i*DATA_SIZE, &bytes[i*DATA_SIZE], DATA_SIZE);
+		fail_unless(error != -1);
 	}
 	fail_unless(i*DATA_SIZE == byteslen);
 

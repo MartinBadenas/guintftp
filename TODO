@@ -3,7 +3,7 @@
 * automake, autoconf... (and remove .project and eclipse files)
 * guintftp and guintftpctl man
 * timeouts
+* signal problem, use sigaction instead
 - test!
 - libwrap
 - tftp protocol extensions
-- signal problem, use sigaction instead

@@ -36,23 +36,28 @@
 
 #define DEBUG 0
 
+void sig_term(int nsignal);
+
 /* This connection (port 69 UDP) must be global because we need to close it from signal handlers */
 connection conn;
 
-void sig_term() {
-	syslog(LOG_NOTICE, "TERM signal received, closing main connection and waiting for children to die...");
-	close_conn(&conn);
-	wait_children_die();
-	syslog(LOG_NOTICE, "Goodbye!!!");
-	closelog();
-	exit(EXIT_SUCCESS);
+void sig_term(int nsignal) {
+	if(SIGTERM == nsignal) {
+		syslog(LOG_NOTICE, "TERM signal received, closing main connection and waiting for children to die...");
+		close_conn(&conn);
+		wait_children_die();
+		syslog(LOG_NOTICE, "Goodbye!!!");
+		closelog();
+		exit(EXIT_SUCCESS);
+	}
 }
 
 
-int main() {
+int main(void) {
 	int16_t error, packet_len;
 	configuration config;
 	char first_packet[MAX_PACKET_SIZE];
+	struct sigaction termaction, chldaction;
 	/*
 	 * LOG_PERROR - off	- we need to ensure that syslog does not write to stderr
 	 * LOG_CONS - off	- we need to ensure that syslog does not write to stdout
@@ -86,15 +91,25 @@ int main() {
 	}
 	syslog(LOG_NOTICE, "Starting...");
 	syslog(LOG_NOTICE, "Setting signal handlers...");
-	signal(SIGCHLD, sig_chld);
-	signal(SIGTERM, sig_term);
+	termaction.sa_handler = sig_term;
+	termaction.sa_flags = 0;
+	if(sigemptyset(&termaction.sa_mask) == -1 || sigaction(SIGTERM, &termaction, NULL) == -1) {
+		syslog(LOG_EMERG, "Error setting SIGTERM");
+		return EXIT_FAILURE;
+	}
+	chldaction.sa_handler = sig_chld;
+	chldaction.sa_flags = SA_NOCLDSTOP;
+	if(sigemptyset(&chldaction.sa_mask) || sigaction(SIGCHLD, &chldaction, NULL) == -1) {
+		syslog(LOG_EMERG, "Error setting SIGCHLD");
+		return EXIT_FAILURE;
+	}
 	syslog(LOG_NOTICE, "Setting umask...");
 	umask(0);
 	syslog(LOG_NOTICE, "Loading configuration...");
 	if(load_config(&config) == -1) {
 		return EXIT_FAILURE;
 	}
-	error = open_server_conn(&conn, config.port);
+	error = open_server_conn(&conn, &config, config.port);
 	if(error == -1) {
 		syslog(LOG_EMERG, "Couldn't open main TFTP connection");
 		return EXIT_FAILURE;

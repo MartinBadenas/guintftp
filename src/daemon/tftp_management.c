@@ -96,7 +96,7 @@ int16_t send_data(connection *conn, packet_data *data, int16_t len) {
 	return 0;
 }
 
-int16_t dispatch_request(configuration *conf, connection *conn, char *packet, uint16_t len) {
+int16_t dispatch_request(connection *conn, char *packet, uint16_t len) {
 	packet_type type;
 	packet_error error;
 	packet_read_write first_packet;
@@ -115,12 +115,12 @@ int16_t dispatch_request(configuration *conf, connection *conn, char *packet, ui
 	}
 	switch(type) {
 	case RRQ:
-		if(send_file(conf, conn, &first_packet) == -1) {
+		if(send_file(conn, &first_packet) == -1) {
 			return -1;
 		}
 		break;
 	case WRQ:
-		if((res = receive_file(conf, conn, &first_packet)) < 0) {
+		if((res = receive_file(conn, &first_packet)) < 0) {
 			/* Receiving file failed, remove file if it exists and return code is -1, -2 is NOT REMOVE!! */
 			if(res == -1 && access(first_packet.filename, R_OK) == 0) {
 				if(unlink(first_packet.filename) == -1) {
@@ -138,17 +138,15 @@ int16_t dispatch_request(configuration *conf, connection *conn, char *packet, ui
 	}
 	return 0;
 }
-int16_t send_file(configuration *conf, connection *conn, packet_read_write *first_packet) {
+int16_t send_file(connection *conn, packet_read_write *first_packet) {
 	packet_error error;
 	packet_ack *ack;
 	packet_data data;
 	int16_t recv_bufflen, read_bufflen;
 	char recv_buff[ACK_SIZE];
 	struct stat stat_file;
-	struct timeval timeout;
-	fd_set rfds;
 	fd file;
-	int retselect = 0, times_tried = 0;
+	int ignore_packet = 0;
 
 	error.op = ERROR;
 	/* Check whether the file is greater than TFTP protocol can handle */
@@ -185,6 +183,7 @@ int16_t send_file(configuration *conf, connection *conn, packet_read_write *firs
 	/* We can't send files equal or greater than (DATA_SIZE * MAX_BLOCK_SIZE) because block field is an unsigned short,
 	 * if it's exactly (DATA_SIZE * MAX_BLOCK_SIZE) we would need to send another packet without data to close the connection
 	 */
+	/* TODO: this is not correct if send mode is netascii!! */
 	if(stat_file.st_size >= DATA_SIZE * MAX_BLOCK_SIZE) {
 		error.error_code = ERROR_CUSTOM;
 		strcpy(error.errmsg, "File is too large");
@@ -209,14 +208,7 @@ int16_t send_file(configuration *conf, connection *conn, packet_read_write *firs
 			send_error(conn, &error);
 			return -1;
 		}
-		/* Convert to netascii if needed
-		if((bytesdiscarded = mode_to_chars(first_packet, data.data, read_bufflen)) == -1) {
-			syslog(LOG_ERR, "Bad netascii");
-			error.error_code = ERROR_CUSTOM;
-			strcpy(error.errmsg, "Internal error");
-			send_error(conn, &error);
-		}*/
-		/* File may have grown during file transfer */
+		/* File may have grown during file transfer (and if it's netascii size calculation is not valid :P) */
 		if(read_bufflen == DATA_SIZE && data.block == MAX_BLOCK_SIZE) {
 			syslog(LOG_ALERT, "File too large, maybe grown while sending? or a size wasn't correct?");
 			error.error_code = ERROR_CUSTOM;
@@ -228,54 +220,37 @@ int16_t send_file(configuration *conf, connection *conn, packet_read_write *firs
 		if(send_data(conn, &data, read_bufflen + MIN_DATA_SIZE) == -1) {
 			return -1;
 		}
-		times_tried = 0;
 		do {
-			/* Setting timeout, we need to do this here because select modifies timeout values */
-			timeout.tv_sec = conf->seconds_timeout;
-			timeout.tv_usec = 0;
-			/* Clears fd set */
-			FD_ZERO(&rfds);
-			/* Wait for this socket to have data */
-			FD_SET(conn->socket, &rfds);
-			if((retselect = select(conn->socket + 1, &rfds, NULL, NULL, &timeout)) == -1) {
-				syslog(LOG_EMERG, "select() failed (errno: %d)", errno);
-				return -1;
-			}
-			times_tried++;
-			if(retselect == 0) {
-				if(times_tried >= conf->max_retry) {
-					syslog(LOG_ERR, "Max retry reached");
-					return -1;
+			recv_bufflen = recv_packet(conn, recv_buff, ACK_SIZE);
+			if(recv_bufflen == -1) {
+				if(errno == ENOBUFS || errno == ENOMEM) {
+					syslog(LOG_ALERT, "Failed receiving packet (allocation exceeded, errno: %d)", errno);
+					error.error_code = ERROR_DISK_FULL_OR_ALLOCATION_EXCEEDED;
 				} else {
-					/* Send last packet */
-					syslog(LOG_ERR, "Connection timeout, sending last packet, tried %d times out of %d", times_tried, conf->max_retry);
-					if(send_data(conn, &data, read_bufflen) == -1) {
-						return -1;
-					}
+					syslog(LOG_ERR, "Failed receiving packet");
+					error.error_code = ERROR_CUSTOM;
+					strcpy(error.errmsg, "Failed receiving packet");
+				}
+				send_error(conn, &error);
+				return -1;
+			} if(recv_bufflen == -2) {
+				/* Send error BUT continue listening */
+				error.error_code = ERROR_UNKNOWN_TRANSFER_ID;
+				if(send_error(conn, &error) == -1) {
+					return -1;
+				}
+				/* Let's restore correct address */
+				conn->address_len = conn->last_address_len;
+				conn->address = conn->last_address;
+				ignore_packet = 1;
+			} else if(recv_bufflen == -3) {
+				if(send_data(conn, &data, read_bufflen) == -1) {
+					return -1;
 				}
 			}
-		} while(retselect == 0);
-		if((recv_bufflen = recv_packet(conn, recv_buff, ACK_SIZE)) == -1) {
-			if(errno == ENOBUFS || errno == ENOMEM) {
-				syslog(LOG_ALERT, "Failed receiving packet (allocation exceeded, errno: %d)", errno);
-				error.error_code = ERROR_DISK_FULL_OR_ALLOCATION_EXCEEDED;
-			} else {
-				syslog(LOG_ERR, "Failed receiving packet");
-				error.error_code = ERROR_CUSTOM;
-				strcpy(error.errmsg, "Failed receiving packet");
-			}
-			send_error(conn, &error);
-			return -1;
-		}
-		if(recv_bufflen == -2) {
-			/* Send error BUT continue listening */
-			error.error_code = ERROR_UNKNOWN_TRANSFER_ID;
-			if(send_error(conn, &error) == -1) {
-				return -1;
-			}
-			/* Let's restore correct address */
-			conn->address_len = conn->last_address_len;
-			conn->address = conn->last_address;
+		} while(!ignore_packet && recv_bufflen == -3);
+		if(ignore_packet) {
+			ignore_packet = 0;
 			continue;
 		}
 		/* Send a illegal operation if packet is not well-formed or ack block is not correct and close connection */
@@ -291,17 +266,15 @@ int16_t send_file(configuration *conf, connection *conn, packet_read_write *firs
 	return 0;
 }
 
-int16_t receive_file(configuration *conf, connection *conn, packet_read_write *first_packet) {
+int16_t receive_file(connection *conn, packet_read_write *first_packet) {
 	packet_ack ack;
 	packet_data *data;
 	packet_error error;
 	char recv_buff[MAX_PACKET_SIZE];
 	int16_t recv_bufflen, datalen;
 	int last_packet = 0;
-	struct timeval timeout;
-	fd_set rfds;
+	int ignore_packet = 0;
 	fd file;
-	int retselect = 0, times_tried = 0;
 
 	error.op = ERROR;
 	if(access(first_packet->filename, F_OK) == 0) {
@@ -341,54 +314,37 @@ int16_t receive_file(configuration *conf, connection *conn, packet_read_write *f
 	}
 	do {
 		syslog(LOG_DEBUG, "Ready to receive another DATA packet");
-		times_tried = 0;
+		recv_bufflen = recv_packet(conn, recv_buff, MAX_PACKET_SIZE);
 		do {
-			/* Setting timeout, we need to do this here because select modifies timeout values */
-			timeout.tv_sec = conf->seconds_timeout;
-			timeout.tv_usec = 0;
-			/* Clears fd set */
-			FD_ZERO(&rfds);
-			/* Wait for this socket to have data */
-			FD_SET(conn->socket, &rfds);
-			if((retselect = select(conn->socket + 1, &rfds, NULL, NULL, &timeout)) == -1) {
-				syslog(LOG_EMERG, "select() failed (errno: %d)", errno);
-				return -1;
-			}
-			times_tried++;
-			if(retselect == 0) {
-				if(times_tried >= conf->max_retry) {
-					syslog(LOG_ERR, "Max retry reached");
-					return -1;
+			if(recv_bufflen == -1) {
+				if(errno == ENOBUFS || errno == ENOMEM) {
+					syslog(LOG_ALERT, "Failed receiving packet (allocation exceeded, errno: %d)", errno);
+					error.error_code = ERROR_DISK_FULL_OR_ALLOCATION_EXCEEDED;
 				} else {
-					/* Send last packet */
-					syslog(LOG_ERR, "Connection timeout, sending last packet");
-					if(send_ack(conn, &ack) == -1) {
-						return -1;
-					}
+					syslog(LOG_ERR, "Failed receiving packet");
+					error.error_code = ERROR_CUSTOM;
+					strcpy(error.errmsg, "Failed receiving packet");
+				}
+				send_error(conn, &error);
+				return -1;
+			} else if(recv_bufflen == -2) {
+				/* Send error BUT continue listening */
+				error.error_code = ERROR_UNKNOWN_TRANSFER_ID;
+				if(send_error(conn, &error) == -1) {
+					return -1;
+				}
+				/* Let's restore correct address */
+				conn->address_len = conn->last_address_len;
+				conn->address = conn->last_address;
+				ignore_packet = 1;
+			} else if(recv_bufflen == -3) {
+				if(send_ack(conn, &ack) == -1) {
+					return -1;
 				}
 			}
-		} while(retselect == 0);
-		if((recv_bufflen = recv_packet(conn, recv_buff, MAX_PACKET_SIZE)) == -1) {
-			if(errno == ENOBUFS || errno == ENOMEM) {
-				syslog(LOG_ALERT, "Failed receiving packet (allocation exceeded, errno: %d)", errno);
-				error.error_code = ERROR_DISK_FULL_OR_ALLOCATION_EXCEEDED;
-			} else {
-				syslog(LOG_ERR, "Failed receiving packet");
-				error.error_code = ERROR_CUSTOM;
-				strcpy(error.errmsg, "Failed receiving packet");
-			}
-			send_error(conn, &error);
-			return -1;
-		}
-		if(recv_bufflen == -2) {
-			/* Send error BUT continue listening */
-			error.error_code = ERROR_UNKNOWN_TRANSFER_ID;
-			if(send_error(conn, &error) == -1) {
-				return -1;
-			}
-			/* Let's restore correct address */
-			conn->address_len = conn->last_address_len;
-			conn->address = conn->last_address;
+		} while(!ignore_packet && recv_bufflen == -3);
+		if(ignore_packet) {
+			ignore_packet = 0;
 			continue;
 		}
 		if(buff_to_packet_data(recv_buff, recv_bufflen, &data) == -1) {
@@ -407,17 +363,6 @@ int16_t receive_file(configuration *conf, connection *conn, packet_read_write *f
 			/* This is the last packet, datalen == 0 so we don't need to do anything but send ack */
 			syslog(LOG_INFO, "Last packet with datalen == 0");
 		} else {
-			/*
-			bytes_minus = chars_to_mode(first_packet, data->data, datalen);
-			if(bytes_minus == -1) {
-				error.error_code = ERROR_CUSTOM;
-				strcpy(error.errmsg, "Bad encoded netascii");
-				send_error(conn, &error);
-				return -1;
-			}
-			/ Recalculate datalen /
-			datalen -= bytes_minus;
-			*/
 			/* datalen == 0 is only allowed as last packet */
 			if(datalen == 0 && data->block == 1) {
 				syslog(LOG_ERR, "datalen == 0 and block == 1, datalen == 1 is only allowed as last packet");
@@ -468,7 +413,7 @@ int16_t new_connection(configuration *conf, char *packet, uint16_t len, connecti
 
 	err.op = ERROR;
 	syslog(LOG_INFO, "Opening connection to client from new child process (forked)");
-	if(open_client_conn(&conn, &parent_conn->remote_address, port) == -1) {
+	if(open_client_conn(&conn, conf, &parent_conn->remote_address, port) == -1) {
 		/* We can't send an error packet without a connection */
 		return -1;
 	}
@@ -487,7 +432,7 @@ int16_t new_connection(configuration *conf, char *packet, uint16_t len, connecti
 	}
 	if(pid == 0) {
 		syslog(LOG_DEBUG, "remote_address: %s", inet_ntoa(parent_conn->remote_address.sin_addr));
-		if(dispatch_request(conf, &conn, packet, len) == 0) {
+		if(dispatch_request(&conn, packet, len) == 0) {
 			res = EXIT_SUCCESS;
 		} else {
 			res = EXIT_FAILURE;
@@ -500,7 +445,7 @@ int16_t new_connection(configuration *conf, char *packet, uint16_t len, connecti
 	return 0;
 }
 
-int16_t write_pid() {
+int16_t write_pid(void) {
 	pid_t pid;
 	char strpid[255];
 
@@ -515,15 +460,17 @@ int16_t write_pid() {
 	return 0;
 }
 
-void sig_chld() {
-	syslog(LOG_NOTICE, "Child terminated :)");
-	if(wait(NULL) == -1) {
-		syslog(LOG_CRIT, "Wait failed :(");
+void sig_chld(int nsignal) {
+	if(SIGCHLD == nsignal) {
+		syslog(LOG_NOTICE, "Child terminated :)");
+		if(wait(NULL) == -1) {
+			syslog(LOG_CRIT, "Wait failed :(");
+		}
+		num_pids--;
 	}
-	num_pids--;
 }
 
-void wait_children_die() {
+void wait_children_die(void) {
 	int status;
 
 	if(num_pids > 0) {

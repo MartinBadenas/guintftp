@@ -57,7 +57,7 @@ typedef struct {
 typedef struct {
 	uint16_t op;
 	uint16_t block;
-	char data[512];
+	char data[DATA_SIZE];
 } packet_data;
 
 typedef struct {
@@ -68,7 +68,7 @@ typedef struct {
 typedef struct {
 	uint16_t op;
 	uint16_t error_code;
-	char errmsg[512];
+	char errmsg[DATA_SIZE];
 } packet_error;
 
 int16_t guess_packet_type(char *buff, uint16_t bufflen, packet_type *type);

@@ -29,7 +29,7 @@
 
 #include "tftp_net.h"
 
-int16_t open_common(connection *conn, unsigned short port) {
+int16_t open_common(connection *conn, configuration *conf, unsigned short port) {
 	int socketfd;
 	
 	socketfd = socket(AF_INET, SOCK_DGRAM, 0);
@@ -38,6 +38,7 @@ int16_t open_common(connection *conn, unsigned short port) {
 		return -1;
 	}
 	conn->socket = socketfd;
+	conn->conf = conf;
 	conn->address_len = sizeof(conn->address);
 	conn->remote_address_len = sizeof(conn->remote_address);
 	conn->dummy_address_len = sizeof(conn->dummy_address);
@@ -51,12 +52,10 @@ int16_t open_common(connection *conn, unsigned short port) {
 	return 0;
 }
 
-int16_t open_server_conn(connection *conn, unsigned short port) {
-	int res;
-	
+int16_t open_server_conn(connection *conn, configuration *conf, unsigned short port) {
+	conn->has_timeout = 0;
 	conn->address.sin_addr.s_addr = INADDR_ANY;
-	res = open_common(conn, port);
-	if(res == -1) {
+	if(open_common(conn, conf, port) == -1) {
 		return -1;
 	}
 	if(bind(conn->socket, (struct sockaddr *)&conn->address, conn->address_len) == -1) {
@@ -67,10 +66,11 @@ int16_t open_server_conn(connection *conn, unsigned short port) {
 	return 0;
 }
 
-int16_t open_client_conn(connection *conn, struct sockaddr_in *serv_address, unsigned short port) {
-	if(open_common(conn, port) == -1) {
+int16_t open_client_conn(connection *conn, configuration *conf, struct sockaddr_in *serv_address, unsigned short port) {
+	if(open_common(conn, conf, port) == -1) {
 		return -1;
 	}
+	conn->has_timeout = 1;
 	conn->remote_address = *serv_address;
 	return 0;
 }
@@ -95,10 +95,40 @@ int16_t send_packet(connection *conn, char *packet, int len) {
 }
 int16_t recv_packet(connection *conn, char *packet, int maxlen) {
 	ssize_t numRecv;
+	int times_tried = 0, retselect;
+	struct timeval timeout;
+	fd_set rfds;
 	
 	/* Copy last address to backup if next connection is from an incorrect ip or port */
 	conn->last_address_len = conn->address_len;
 	conn->last_address = conn->address;
+
+	if(conn->has_timeout) {
+		do {
+			/* Setting timeout, we need to do this here because select modifies timeout values */
+			timeout.tv_sec = conn->conf->seconds_timeout;
+			timeout.tv_usec = 0;
+			/* Clears fd set */
+			FD_ZERO(&rfds);
+			/* Wait for this socket to have data */
+			FD_SET(conn->socket, &rfds);
+			if((retselect = select(conn->socket + 1, &rfds, NULL, NULL, &timeout)) == -1) {
+				syslog(LOG_EMERG, "select() failed (errno: %d)", errno);
+				return -1;
+			}
+			times_tried++;
+			if(retselect == 0) {
+				if(times_tried >= conn->conf->max_retry) {
+					syslog(LOG_ERR, "Max retry reached");
+					return -1;
+				} else {
+					/* Send last packet */
+					syslog(LOG_ERR, "Connection timeout, sending last packet, tried %d times out of %d", times_tried, conn->conf->max_retry);
+					return -3;
+				}
+			}
+		} while(retselect == 0);
+	}
 
 	numRecv = recvfrom(conn->socket, packet, maxlen, 0, (struct sockaddr *) &conn->remote_address, &conn->remote_address_len);
 	syslog(LOG_DEBUG, "recv_packet remote_address: %s", inet_ntoa(conn->remote_address.sin_addr));

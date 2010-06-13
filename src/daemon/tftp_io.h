@@ -26,5 +26,8 @@
 
 int16_t read_bytes(const char *filename, off_t desiredpos, char *buff, uint16_t bufflen);
 int16_t write_bytes(const char *filename, off_t desiredpos, const char *buff, uint16_t bufflen);
+/* Internal functions */
+int16_t close_file(int fd);
+int open_lseek(const char *filename, off_t desiredpos, int flags, mode_t mode);
 
 #endif /*TFTP_IO_H_*/

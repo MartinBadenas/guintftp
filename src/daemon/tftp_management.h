@@ -25,28 +25,18 @@
 
 #include "tftp_configuration.h"
 #include "tftp_packet.h"
+#include "tftp_net.h"
 
-typedef struct {
-	int socket;
-	struct sockaddr_in address;
-	socklen_t address_len;
-	struct sockaddr_in remote_address;
-	socklen_t remote_address_len;
-	struct sockaddr_in last_address;
-	socklen_t last_address_len;
-	struct sockaddr_in dummy_address;
-	socklen_t dummy_address_len;
-} connection;
-
+int16_t new_connection(configuration *conf, char *packet, uint16_t len, connection *parent_conn);
+int16_t write_pid(void);
+void sig_chld(int nsignal);
+void wait_children_die(void);
+/* Internal functions */
 int16_t send_error(connection *conn, packet_error *error);
 int16_t send_ack(connection *conn, packet_ack *ack);
 int16_t send_data(connection *conn, packet_data *data, int16_t len);
-int16_t dispatch_request(configuration *conf, connection *conn, char *paquet, uint16_t len);
-int16_t send_file(configuration *conf, connection *conn, packet_read_write *first_packet);
-int16_t receive_file(configuration *conf, connection *conn, packet_read_write *first_packet);
-int16_t new_connection(configuration *conf, char *packet, uint16_t len, connection *parent_conn);
-int16_t write_pid();
-void sig_chld();
-void wait_children_die();
+int16_t dispatch_request(connection *conn, char *paquet, uint16_t len);
+int16_t send_file(connection *conn, packet_read_write *first_packet);
+int16_t receive_file(connection *conn, packet_read_write *first_packet);
 
 #endif /*TFTP_MANAGEMENT_H_*/

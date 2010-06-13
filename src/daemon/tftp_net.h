@@ -21,12 +21,28 @@
 #ifndef TFTP_NET_H_
 #define TFTP_NET_H_
 
-#include "tftp_management.h"
+#include "tftp_configuration.h"
 
-int16_t open_server_conn(connection *conn, unsigned short port);
-int16_t open_client_conn(connection *conn, struct sockaddr_in *serv_address, unsigned short port);
+typedef struct {
+	int socket;
+	int has_timeout;
+	configuration *conf;
+	struct sockaddr_in address;
+	socklen_t address_len;
+	struct sockaddr_in remote_address;
+	socklen_t remote_address_len;
+	struct sockaddr_in last_address;
+	socklen_t last_address_len;
+	struct sockaddr_in dummy_address;
+	socklen_t dummy_address_len;
+} connection;
+
+int16_t open_server_conn(connection *conn, configuration *conf, unsigned short port);
+int16_t open_client_conn(connection *conn, configuration *conf, struct sockaddr_in *serv_address, unsigned short port);
 int16_t send_packet(connection *conn, char *packet, int len);
 int16_t recv_packet(connection *conn, char *packet, int maxlen);
 int16_t close_conn(connection *conn);
+/* Internal functions */
+int16_t open_common(connection *conn, configuration *conf, unsigned short port);
 
 #endif /*TFTP_NET_H_*/

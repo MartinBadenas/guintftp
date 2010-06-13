@@ -39,11 +39,11 @@
 
 int load_config(configuration *config) {
 	struct servent *entry;
-	int fd, error, newlineindex, i;
+	int fd, error, newlineindex;
 	ssize_t bytes_read, num_bytes;
 	off_t pos;
 	char buff[MAXLINE_LEN], numbuff[NUMBUFF_LEN];
-	char *newline, *tmp;
+	char *newline;
 
 	entry = getservbyname("tftp", "udp");
 	if(entry == NULL) {
@@ -75,60 +75,16 @@ int load_config(configuration *config) {
 		buff[newlineindex] = '\0';
 		syslog(LOG_DEBUG, "config line: %s", buff);
 
-		tmp = strstr(buff, "root_dir");
-		if(tmp != NULL) {
-			tmp = &tmp[9];
-			i = 0;
-			while(tmp[i] != '\n' && i < PATH_MAX) {
-				config->root_dir[i] = tmp[i];
-				i++;
-			}
-			config->root_dir[i] = '\0';
-		} else {
-			tmp = strstr(buff, "user_name");
-			if(tmp != NULL) {
-				tmp = &tmp[10];
-				i = 0;
-				while(tmp[i] != '\n' && i < MAX_USERNAME_LENGTH) {
-					config->user_name[i] = tmp[i];
-					i++;
-				}
-				config->user_name[i] = '\0';
-			} else {
-				tmp = strstr(buff, "max_connections");
-				if(tmp != NULL) {
-					tmp = &tmp[16];
-					i = 0;
-					while(tmp[i] != '\n' && i < NUMBUFF_LEN) {
-						numbuff[i] = tmp[i];
-						i++;
-					}
-					numbuff[i] = '\0';
+		if(!get_config_line(buff, "root_dir", config->root_dir, PATH_MAX)) {
+			if(!get_config_line(buff, "user_name", config->user_name, MAX_USERNAME_LENGTH)) {
+				if(get_config_line(buff, "max_connections", numbuff, NUMBUFF_LEN)) {
 					config->max_connections = atoi(numbuff);
+				} else if(get_config_line(buff, "max_retry", numbuff, NUMBUFF_LEN)) {
+					config->max_retry = atoi(numbuff);
+				} else if(get_config_line(buff, "seconds_timeout", numbuff, NUMBUFF_LEN)) {
+					config->seconds_timeout = atoi(numbuff);
 				} else {
-					tmp = strstr(buff, "max_retry");
-					if(tmp != NULL) {
-						tmp = &tmp[10];
-						i = 0;
-						while(tmp[i] != '\n' && i < NUMBUFF_LEN) {
-							numbuff[i] = tmp[i];
-							i++;
-						}
-						numbuff[i] = '\0';
-						config->max_retry = atoi(numbuff);
-					} else {
-						tmp = strstr(buff, "seconds_timeout");
-						if(tmp != NULL) {
-							tmp = &tmp[16];
-							i = 0;
-							while(tmp[i] != '\n' && i < NUMBUFF_LEN) {
-								numbuff[i] = tmp[i];
-								i++;
-							}
-							numbuff[i] = '\0';
-							config->seconds_timeout = atoi(numbuff);
-						}
-					}
+					syslog(LOG_DEBUG, "<%s> line didn't have any config!", buff);
 				}
 			}
 		}
@@ -150,6 +106,29 @@ int load_config(configuration *config) {
 		syslog(LOG_CRIT, "Failed closing file %s", CONFIGURATION_FILE);
 		return -1;
 	}
+}
+
+int get_config_line(char *buff, char *conf_str, char *conf_value, size_t lenlimit) {
+	size_t conflen, linelen, i, lim;
+	char *tmp;
+
+	tmp = strstr(buff, conf_str);
+	if(tmp != NULL) {
+		linelen = strlen(tmp);
+		conflen = strlen(conf_str);
+		if(linelen > conflen) {
+			tmp = &tmp[conflen];
+			lim = linelen - conflen;
+			i = 0;
+			while(tmp[i] != '\n' && i < lenlimit && i < lim) {
+				conf_value[i] = tmp[i];
+				i++;
+			}
+			conf_value[i] = '\0';
+		}
+		return 1;
+	}
+	return 0;
 }
 
 int apply_config(configuration *config) {

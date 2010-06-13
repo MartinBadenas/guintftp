@@ -37,5 +37,7 @@ typedef struct {
 
 int load_config(configuration *config);
 int apply_config(configuration *config);
+/* Internal functions */
+int get_config_line(char *buff, char *conf_str, char *conf_value, size_t lenlimit);
 
 #endif /* TFTP_CONFIGURATION_H_ */

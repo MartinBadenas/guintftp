@@ -22,22 +22,24 @@
 
 /* Check-based unit tests */
 #include <check.h>
+#include <stdlib.h>
 
 #include "test_tftp_packet.c"
 #include "test_tftp_io.c"
 
+Suite *guintftp_suite(void);
 
-Suite *guintftp_suite() {
+Suite *guintftp_suite(void) {
 	Suite *s = suite_create("guintftp");
 	TCase *tc;
 
 	/* test IO */
 	tc = tcase_create("test io");
 
-	tcase_add_test(tc, test_read_block);
+	tcase_add_test(tc, test_write_block);
 	suite_add_tcase(s, tc);
 
-	tcase_add_test(tc, test_write_block);
+	tcase_add_test(tc, test_read_block);
 	suite_add_tcase(s, tc);
 	/* end test IO */
 
@@ -75,15 +77,15 @@ Suite *guintftp_suite() {
 	return s;
 }
 
-int main() {
+int main(void) {
 	int nf;
 	Suite *s = guintftp_suite();
 	SRunner *sr = srunner_create(s);
 	srunner_set_log(sr, "check_guintftp.log");
 	srunner_run_all(sr, CK_NORMAL);
 	nf = srunner_ntests_failed(sr);
-	srunner_free(sr);
+	/*srunner_free(sr);*/
 
-	return (nf == 0) ? 0 : 1;
+	return (nf == 0) ? EXIT_SUCCESS : EXIT_FAILURE;
 }
 

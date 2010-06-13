@@ -23,6 +23,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <syslog.h>
+#include <errno.h>
 
 #include "tftp_io.h"
 #include "tftp_packet.h"
@@ -47,7 +48,7 @@ int open_lseek(const char *filename, off_t desiredpos, int flags, mode_t mode) {
 		fd = open(filename, flags, mode);
 	}
 	if(fd == -1) {
-		syslog(LOG_CRIT, "Failed opening file %s", filename);
+		syslog(LOG_CRIT, "Failed opening file %s (errno: %d)", filename, errno);
 		return -1;
 	}
 	pos = lseek(fd, desiredpos, SEEK_SET);
@@ -82,7 +83,7 @@ int16_t read_bytes(const char *filename, off_t desiredpos, char *buff, uint16_t 
 }
 int16_t write_bytes(const char *filename, off_t desiredpos, const char *buff, uint16_t bufflen) {
 	int fd, flags;
-	ssize_t num_bytes = 0, error, writelen;
+	ssize_t num_bytes = 0, error = 0, writelen;
 	
 	flags = O_WRONLY | O_CREAT;
 	if(desiredpos == 0) {

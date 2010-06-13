@@ -39,22 +39,20 @@ int16_t read_block(fd *file, char *buff) {
 	}
 	file->filepos += bytes_read;
 	if(file->is_netascii && bytes_read > 0) {
-		if(buff[0] == '\n') {
-			if(!file->lastwascr) {
-				btocopy = bytes_read-2;
-				if(bytes_read == DATA_SIZE) {
-					btocopy--;
-					file->filepos--;
-				} else {
-					bytes_read++;
-				}
-				memmove(&buff[1], &buff[0], btocopy);
-				buff[0] = '\r';
+		if(buff[0] == '\n' && !file->lastwascr) {
+			btocopy = bytes_read;
+			if(bytes_read == DATA_SIZE) {
+				btocopy--;
+				file->filepos--;
+			} else {
+				bytes_read++;
 			}
+			memmove(&buff[1], &buff[0], btocopy);
+			buff[0] = '\r';
 		}
 		for(i = 1; i < bytes_read-1; i++) {
 			if(buff[i] == '\n' && buff[i-1] != '\r') {
-				btocopy = bytes_read-i-1;
+				btocopy = bytes_read-i;
 				if(bytes_read == DATA_SIZE) {
 					btocopy--;
 					file->filepos--;
@@ -65,12 +63,14 @@ int16_t read_block(fd *file, char *buff) {
 				buff[i] = '\r';
 			}
 		}
-		if(buff[i] == '\n' && (i == 0 || buff[i-1] != '\r')) {
-			buff[i] = '\r';
-			if(bytes_read == DATA_SIZE) {
-				file->filepos--;
-			} else {
-				bytes_read++;
+		if(bytes_read >= 2) {
+			if(buff[i] == '\n' && buff[i-1] != '\r') {
+				buff[i] = '\r';
+				if(bytes_read == DATA_SIZE) {
+					file->filepos--;
+				} else {
+					bytes_read++;
+				}
 			}
 		}
 		file->lastwascr = buff[i] == '\r';
